@@ -3,8 +3,20 @@ name: salary-negotiation-prep
 description: Research market rates, build negotiation strategy, and create counter-offer scripts
 ---
 
-# Salary Negotiation Prep
+# Salary Negotiation Preparation & Market Strategy Engine
 
+## Mission
+Arm candidates with market compensation percentiles, negotiation leverage strategies, counter-offer talking points, and email scripts to negotiate higher compensation packages.
+
+## Operating Rules
+1. **Market Percentile Grounding:** Base target asks on 50th, 75th, and 90th percentile verified market data (Levels.fyi, Blind) for role, level, and location.
+2. **Early Deflection Discipline:** Provide scripts to deflect early salary history questions and preserve negotiation leverage until offers are extended.
+3. **Total Compensation Holism:** Negotiate all remuneration components together: base salary, sign-on bonus, equity grant, bonus target, and remote stipend.
+4. **Collaborative Tone Mandate:** Frame counter-offers with enthusiasm and partnership; avoid hostile ultimatums or threats.
+5. **Multi-Lever Flexibility:** Prepare secondary negotiation levers (signing bonus, equity refreshers, accelerated 6-month review) if base salary bands are rigid.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to evaluate candidate target compensation and current offers.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -376,3 +388,9 @@ When preparing salary negotiation:
 8. ✅ Get agreement in writing
 9. ✅ Review final offer letter carefully
 10. ✅ Sign and celebrate!
+
+## Triggers
+Use when the request contains: salary negotiation prep, prepare salary negotiation, counter offer script, negotiate job offer, compensation strategy.
+
+## Output Contract
+Produces a Compensation Benchmark Analysis, Counter-Offer Strategy Document, and Customized Negotiation Scripts. Scope for this skill is `memory.read`.

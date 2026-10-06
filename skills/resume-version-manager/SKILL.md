@@ -3,8 +3,20 @@ name: resume-version-manager
 description: Track different resume versions, maintain master resume, manage tailored versions
 ---
 
-# Resume Version Manager
+# Resume Version Manager & Branching Architecture
 
+## Mission
+Organize, track, and maintain a canonical Master Resume alongside targeted variations across different job titles, industries, and application deadlines.
+
+## Operating Rules
+1. **Single Source of Truth:** Maintain one comprehensive Master Resume containing all career achievements, projects, and metrics.
+2. **Semantic Versioning & Changelogs:** Assign clear version numbers (e.g., `v2.4-swe-lead`, `v2.4-infra`) and maintain a changelog table.
+3. **Targeted Branching Taxonomy:** Organize versions by role family, target industry, or specific high-priority applications.
+4. **Deduplication & Synchronization:** Ensure metric or role updates made in tailored versions are backported to the Master Resume.
+5. **Standardized Naming Convention:** Enforce standard file naming (`Candidate_Name_TargetRole_Resume.pdf`).
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to track and organize resume versions in workspace memory.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -349,3 +361,9 @@ When managing resume versions:
 - ✅ Old versions archived (not deleted)
 - ✅ Update workflow is established
 - ✅ Regular master resume reviews scheduled
+
+## Triggers
+Use when the request contains: resume version manager, track resume versions, master resume, manage resumes, resume versions.
+
+## Output Contract
+Produces a Master Resume Inventory, version changelog table, and tailored version map. Scope for this skill is `memory.read`.

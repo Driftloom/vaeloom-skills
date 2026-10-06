@@ -3,8 +3,20 @@ name: resume-quantifier
 description: Find opportunities to add metrics and estimate numbers when exact data unavailable
 ---
 
-# Resume Quantifier
+# Resume Quantifier & Metric Extraction Framework
 
+## Mission
+Identify unmeasured tasks in candidate resumes and systematically extract or estimate truthful metrics (cost, time, scale, volume, percentage improvement).
+
+## Operating Rules
+1. **Metric Discovery Probing:** Ask targeted probing questions to uncover scale (team size, user count, query volume, request latency, budget).
+2. **Conservative Estimation Modeling:** When exact numbers are unknown, calculate conservative, defensible estimates based on known baselines.
+3. **Scale & Baseline Grounding:** Always frame metrics against a clear baseline (e.g., 'reduced latency from 450ms to 120ms').
+4. **Business Impact Connection:** Link technical engineering tasks directly to business value (revenue, cost, efficiency, compliance).
+5. **Anti-Fabrication Guarantee:** Never guess or invent numbers; mark estimated metrics with clear defensible methodologies.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to review candidate experience records.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -348,3 +360,9 @@ For each bullet:
 **Every bullet can be quantified.** If you think your work can't be measured, you haven't asked the right questions yet.
 
 The goal isn't to have impressive numbers—it's to have SPECIFIC numbers that show the scope and impact of your work.
+
+## Triggers
+Use when the request contains: resume quantifier, add metrics to resume, quantify achievements, quantify bullet points, estimate resume numbers.
+
+## Output Contract
+Produces a Metric Discovery Audit with proposed questions, conservative estimation models, and quantified bullet revisions. Scope for this skill is `memory.read`.

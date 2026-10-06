@@ -3,8 +3,20 @@ name: offer-comparison-analyzer
 description: Compare multiple job offers side-by-side with total compensation analysis
 ---
 
-# Offer Comparison Analyzer
+# Offer Comparison Analyzer & Total Compensation Diligence
 
+## Mission
+Evaluate multiple job offers across Total Compensation (base, bonus, equity, 401k match, health benefits, remote stipends), cost of living differences, and long-term career trajectory.
+
+## Operating Rules
+1. **Standardized 4-Year TC Modeling:** Normalize offers across Year-1 cash (base + signing bonus) and Years 1-4 annualized Total Compensation.
+2. **Equity Risk & Liquidity Haircutting:** Discount illiquid startup equity based on stage, 409A valuation, liquidation preferences, and funding runway.
+3. **Cost-of-Living Purchasing Parity:** Adjust nominal compensation for location tax brackets and regional cost of living index differences.
+4. **Non-Monetary Factor Weighting:** Score remote flexibility, on-call expectations, healthcare coverage, PTO, and learning budgets alongside cash compensation.
+5. **Objective Trade-Off Synthesis:** Generate a decision matrix highlighting where each offer wins and the exact trade-offs required.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to evaluate candidate financial inputs without unapproved writes.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -364,3 +376,9 @@ Based on your stated priorities of [X, Y, Z], **Offer [A/B]** appears to be the 
 - ✅ Checked company stability/risk
 - ✅ Aligned with personal priorities
 - ✅ Gut-checked the decision
+
+## Triggers
+Use when the request contains: offer comparison analyzer, compare offers, job offer evaluation, total comp comparison, offer decision.
+
+## Output Contract
+Produces a side-by-side offer comparison table, annualized TC breakdown, upside/downside risk analysis, and final decision matrix. Scope for this skill is `memory.read`.

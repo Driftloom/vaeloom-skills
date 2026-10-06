@@ -3,8 +3,20 @@ name: interview-prep-generator
 description: Generate STAR stories, practice questions, and talking points from resume
 ---
 
-# Interview Prep Generator
+# Interview Prep Generator & Comprehensive Candidate Kit
 
+## Mission
+Synthesize comprehensive behavioral and technical interview preparation kits from candidate resumes and job descriptions, generating STAR story banks, anticipated counter-probes, and reverse interview questions.
+
+## Operating Rules
+1. **Golden STAR Time Ratio:** Structure behavioral answers adhering to the 15/10/60/15 rule (Situation 15%, Task 10%, Action 60%, Result 15%).
+2. **Individual Agency Mandate:** Enforce personal first-person ownership ('I architected', 'I decided') eliminating passive team masking ('we did').
+3. **Level-Appropriate Calibration:** Calibrate answers to target seniority (L4 execution, L5 technical leadership, L6 cross-org strategy).
+4. **Failure & Scar Authenticity:** Include genuine setbacks, trade-offs, and corrective retrospective actions for each story.
+5. **Strategic Reverse Interview Questions:** Generate 3 high-signal reverse questions that reveal company engineering culture, product bottlenecks, and team dynamics.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to ground practice stories in verified workspace memories.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -373,3 +385,9 @@ For complete interview prep:
 8. ✅ Prepare logistics (outfit, route, tech check)
 9. ✅ Review the day before interview
 10. ✅ Send thank you notes after
+
+## Triggers
+Use when the request contains: interview prep generator, interview preparation, behavioral interview prep, practice interview questions.
+
+## Output Contract
+Produces an interview preparation package with 5 STAR stories, anticipated tough interviewer probes with recommended responses, and 3 strategic reverse interview questions. Scope for this skill is `memory.read`.

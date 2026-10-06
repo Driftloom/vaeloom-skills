@@ -3,8 +3,20 @@ name: cold-email-writer
 description: Write personalized cold outreach emails to hiring managers and founders — specific, human, not a pitch deck
 ---
 
-# Cold Email Writer
+# Cold Email Outreach & Executive Networking Playbook
 
+## Mission
+Draft high-signal, personalized cold outreach emails to engineering hiring managers, founders, and technical recruiters that generate high reply rates without sounding salesy, generic, or subservient.
+
+## Operating Rules
+1. **Specific Observational Hook:** Open with a genuine, research-backed observation about the recipient's recent engineering blog post, product release, or talk.
+2. **Brevity Mandate:** Keep total email length strictly under 125 words (3 to 4 punchy sentences) to respect executive reading time on mobile devices.
+3. **Single Metric-Dense Proof Point:** Share exactly one hyper-relevant, quantified achievement proving immediate competence in their exact domain.
+4. **Low-Friction Single Call-to-Action:** Conclude with a specific, frictionless low-pressure ask ('Are you open to a 10-minute chat this Thursday?').
+5. **Zero Generic Fluff:** Eliminate all pleasantries ('Hope this email finds you well', 'I know you are busy') and subservient framing.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to ground personal proof points in verified candidate accomplishments.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -211,3 +223,9 @@ a conversation.
 Sarah
 sarah@email.com
 ```
+
+## Triggers
+Use when the request contains: cold email writer, cold email, recruiter outreach, hiring manager email, networking email.
+
+## Output Contract
+Produces 3 personalized subject line options, complete email body (<125 words), hook research justification, and a recommended 5-day follow-up script. Scope for this skill is `memory.read`.

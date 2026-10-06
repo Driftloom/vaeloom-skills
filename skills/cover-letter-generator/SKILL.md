@@ -3,8 +3,20 @@ name: cover-letter-generator
 description: Create personalized, compelling cover letters from resume and job description
 ---
 
-# Cover Letter Generator
+# Cover Letter Generator & Role Alignment Playbook
 
+## Mission
+Generate targeted, 3-paragraph cover letters connecting candidate accomplishments directly to company mission and open role requirements, avoiding generic boilerplate cliches.
+
+## Operating Rules
+1. **Pain-Point Hook Opening:** Open paragraph 1 by identifying the company's core engineering or business challenge and why the candidate is compelled to solve it.
+2. **Two Quantified Achievement Bridges:** Dedicate paragraph 2 to two metric-dense proof points solving parallel problems in prior roles.
+3. **Forward-Looking Low-Friction Close:** Close paragraph 3 with forward-looking enthusiasm, role alignment, and proactive meeting availability.
+4. **Word Count Constraint:** Enforce total word count strictly between 240 and 340 words for optimal recruiter scannability.
+5. **Zero Template Clichés:** Prohibit phrases like 'I am writing to express my interest' or 'Please find my resume attached'.
+6. **Strict Grounding in Candidate Vault:** Pull all claims and numbers directly from workspace memory (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -275,3 +287,9 @@ Before delivering any cover letter:
 8. ✅ Is 250-400 words (3-4 paragraphs)
 9. ✅ Contains no typos or grammatical errors
 10. ✅ Would make you want to interview this person
+
+## Triggers
+Use when the request contains: cover letter generator, generate cover letter, write cover letter, cover letter draft.
+
+## Output Contract
+Produces a complete 3-paragraph tailored cover letter in markdown, including word count confirmation and proof point citations. Scope for this skill is `memory.read`.

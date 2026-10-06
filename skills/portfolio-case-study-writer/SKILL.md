@@ -3,8 +3,20 @@ name: portfolio-case-study-writer
 description: Transform resume bullets into detailed portfolio case studies
 ---
 
-# Portfolio Case Study Writer
+# Portfolio Case Study Writer & Architectural Storytelling
 
+## Mission
+Transform complex engineering projects into compelling, narrative-driven portfolio case studies outlining the problem statement, system architecture, trade-offs made, and business impact.
+
+## Operating Rules
+1. **Context-Problem-Solution-Impact Architecture:** Structure every case study following the proven technical narrative arc.
+2. **Architecture & Trade-Off Defense:** Explicitly document rejected architectural alternatives and defend the chosen approach with engineering trade-offs.
+3. **Concrete Code & Schema Anchors:** Include illustrative code snippets, API endpoints, or database schema designs.
+4. **Quantified Production Outcomes:** Highlight measured latency drops, throughput increases, cost savings, or uptime improvements.
+5. **Retrospective Lessons Learned:** Conclude with authentic scars and architectural lessons discovered during post-launch operations.
+6. **Strict Grounding in Candidate Vault:** Pull all project artifacts and figures directly from workspace memory (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -367,3 +379,9 @@ When creating a case study:
 - ✅ Appropriate length (3-10 min read)
 - ✅ Proofread and polished
 - ✅ Can discuss in detail in interview
+
+## Triggers
+Use when the request contains: portfolio case study writer, case study, project case study, portfolio deep dive, write case study.
+
+## Output Contract
+Produces a publication-ready portfolio case study markdown document with Problem, Technical Architecture, Benchmarks, and Impact. Scope for this skill is `memory.read`.

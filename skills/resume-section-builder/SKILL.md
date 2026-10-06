@@ -3,8 +3,20 @@ name: resume-section-builder
 description: Create targeted resume sections optimized for different experience levels and roles
 ---
 
-# Resume Section Builder
+# Resume Section Builder & Modular Architecture
 
+## Mission
+Construct modular, tailored resume sections (Professional Summary, Core Competencies, Experience, Projects, Education) optimized for target career levels.
+
+## Operating Rules
+1. **Modular Section Independence:** Build self-contained sections that can be rearranged or substituted without breaking document flow.
+2. **Role-Tailored Summary Hook:** Craft 3-sentence executive summaries tailored to target job titles rather than generic objective statements.
+3. **Categorized Skills Taxonomy:** Group technical competencies into logical categories (Languages, Frameworks, Cloud, Data, Tools) rather than an unorganized comma-separated list.
+4. **Reverse Chronological Sequencing:** Present experience and education in strict reverse chronological order.
+5. **Seniority-Weighted Space Allocation:** Allocate page space proportionally to the most recent and relevant roles (70% space to last 5 years).
+6. **Strict Grounding in Candidate Vault:** Pull all section data directly from workspace memory (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -395,3 +407,9 @@ When building resume sections:
 - ✅ All sections support the target role
 - ✅ Nothing irrelevant or outdated included
 - ✅ Total length appropriate (1-2 pages)
+
+## Triggers
+Use when the request contains: resume section builder, build resume section, write summary section, create skills section, experience section.
+
+## Output Contract
+Produces targeted, copy-ready resume sections formatted in standard markdown with guidance on optimal page placement. Scope for this skill is `memory.read`.

@@ -3,8 +3,20 @@ name: career-changer-translator
 description: Translate skills from one industry to another, identify transferable skills
 ---
 
-# Career Changer Translator
+# Career Changer Translator & Transferable Competency Framework
 
+## Mission
+Translate non-traditional career backgrounds and cross-industry experience into target-industry terminology, emphasizing transferable skills, problem-solving competencies, and adaptable technical acumen.
+
+## Operating Rules
+1. **Functional Competency Mapping:** Abstract industry-specific duties into foundational functional skills (stakeholder management, systems architecture, data-driven optimization, team leadership).
+2. **Target Domain Vocabulary Adoption:** Systematically map legacy jargon into standard target industry nomenclature while preserving authentic achievements.
+3. **De-Jargonizing Prior Fields:** Strip niche acronyms and terminology from prior industries that confuse hiring managers.
+4. **Outcome-Oriented Metric Translation:** Reframe accomplishments around universal business outcomes: revenue growth, cost reduction, efficiency gains, and risk mitigation.
+5. **Bridge Narrative Cohesion:** Formulate a compelling, coherent narrative explaining how prior non-traditional experience creates an unfair advantage in the new target role.
+6. **Strict Grounding in Candidate Vault:** Source all raw achievements and figures directly from workspace memory (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -366,3 +378,9 @@ When helping a career changer:
 5. **Focus on value you bring** - your unique perspective is an asset
 6. **Address concerns proactively** - don't let them wonder "why"
 7. **Network in target field** - referrals help career changers most
+
+## Triggers
+Use when the request contains: career changer translator, career change, career pivot, transferable skills, switch industry.
+
+## Output Contract
+Produces a Transferable Skills Translation Matrix, reframed experience bullets in Google XYZ format, and a 3-sentence narrative bridge hook. Scope for this skill is `memory.read`.

@@ -3,8 +3,20 @@ name: tech-resume-optimizer
 description: Optimize resumes for software engineering, PM, and technical roles
 ---
 
-# Tech Resume Optimizer
+# Tech Resume Optimizer & Software Engineering Architecture
 
+## Mission
+Optimize software engineering, DevOps, cloud, and data science resumes for technical depth, system architecture scope, and technical recruiter screening.
+
+## Operating Rules
+1. **Modern Tech Stack Categorization:** Group skills into Languages, Frameworks & Runtimes, Cloud & DevOps, Databases & Storage, and Distributed Systems.
+2. **Architectural Scope & Scale Highlights:** Explicitly cite request volume, throughput (RPS), dataset size (TB/PB), and latency bounds.
+3. **Production Reliability & Impact Metrics:** Highlight MTTR reduction, uptime improvements, CI/CD deployment frequency, and cost optimizations.
+4. **System Ownership & Agency:** Detail technical decisions, architectural trade-offs, and RFC proposals spearheaded by the candidate.
+5. **Anti-Keyword-Stuffing Rigor:** Contextualize technical tools within project bullets rather than ungrounded buzzword clouds.
+6. **Strict Grounding in Candidate Vault:** Source all engineering facts directly from workspace memory (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -368,3 +380,9 @@ Remember: Your resume must pass ATS AND impress technical recruiters.
 - Include metrics and scale
 - Demonstrate problem-solving
 - Show you understand systems
+
+## Triggers
+Use when the request contains: tech resume optimizer, software engineer resume, tech resume, swe resume, developer resume.
+
+## Output Contract
+Produces a technical resume optimization report with Categorized Skills Section, Architecture Bullet Refinements, and Engineering Impact Score. Scope for this skill is `memory.read`.

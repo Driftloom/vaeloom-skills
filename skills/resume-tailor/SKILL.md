@@ -3,8 +3,20 @@ name: resume-tailor
 description: Customize resume for specific job postings while maintaining truthfulness
 ---
 
-# Resume Tailor
+# Resume Tailor & Strategic Job Alignment Playbook
 
+## Mission
+Customize a candidate's master resume for a specific target job posting by reprioritizing relevant experiences and aligning terminology while preserving complete truthfulness.
+
+## Operating Rules
+1. **Master Resume Grounding:** Base all customizations strictly on the candidate's canonical master resume; never fabricate new roles or tools.
+2. **Strategic Bullet Re-Ordering:** Move the most directly relevant achievements to the top of each role's bullet list.
+3. **Job Description Keyword Mirroring:** Adopt the target employer's exact terminology for skills and methodologies the candidate has used.
+4. **Honest Competency Boundaries:** Highlight genuine transferable strengths without claiming unverified expertise.
+5. **Length & Scannability Preservation:** Maintain the resume within 1 to 2 pages without expanding bullet counts unnecessarily.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to access master resume records.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -310,3 +322,9 @@ When tailoring a resume, provide:
 - Maintain master resume as source of truth
 - Never sacrifice ATS compatibility for tailoring
 - Test keyword match after tailoring
+
+## Triggers
+Use when the request contains: resume tailor, tailor resume, customize resume for job, target resume, match resume to jd.
+
+## Output Contract
+Produces a customized resume markdown document, tailoring changelog, and keyword alignment confirmation. Scope for this skill is `memory.read`.

@@ -3,8 +3,20 @@ name: creative-portfolio-resume
 description: Balance visual design with ATS compatibility for creative roles
 ---
 
-# Creative Portfolio Resume
+# Creative Portfolio Resume & Design System Architecture
 
+## Mission
+Balance visual typographic hierarchy, portfolio case links, and design aesthetic with strict single-column ATS parseability for UX/UI designers, creative technologists, and frontend engineers.
+
+## Operating Rules
+1. **Dual-Audience Architecture:** Design for both algorithmic ATS parsers (standard headers, single column) and discerning Design Directors (clean typography, crisp hierarchy).
+2. **ATS Single-Column Safety:** Avoid sidebars, non-standard layout tables, canvas drawings, and graphics that break automated document ingestion.
+3. **Live Portfolio Link Hygiene:** Format portfolio case study links with clean, verified URLs and descriptive anchor labels.
+4. **Problem-to-Outcome Project Framing:** Structure design bullets using Context -> Design Process / Trade-off -> Measurable User/Business Outcome.
+5. **Technical Design Competency Grouping:** Categorize skills into Product Strategy, Design Systems, Prototyping & Tools, and Frontend Technologies.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to extract portfolio project summaries from workspace memory.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -329,3 +341,9 @@ When creating a creative resume:
 - ✅ File is optimized for sharing (reasonable size)
 - ✅ Content quality matches design quality
 - ✅ Resume is a worthy portfolio piece
+
+## Triggers
+Use when the request contains: creative portfolio resume, design resume, creative cv, ux portfolio resume, portfolio resume.
+
+## Output Contract
+Produces an ATS-compliant, design-forward resume markdown draft paired with project case study link anchors and typography specifications. Scope for this skill is `memory.read`.

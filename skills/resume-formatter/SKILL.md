@@ -3,8 +3,20 @@ name: resume-formatter
 description: Ensure ATS-friendly formatting and create clean scannable layouts
 ---
 
-# Resume Formatter
+# Resume Formatter & Single-Column Layout Engine
 
+## Mission
+Format resume text into clean, scannable, ATS-compliant single-column layouts with clear typographic hierarchy, consistent spacing, and standard section headers.
+
+## Operating Rules
+1. **Single-Column Layout Mandate:** Ban multi-column tables, floating text boxes, and sidebars that scramble ATS reading order.
+2. **Consistent Chronological Sequence:** Align dates (Month Year – Month Year) and geographical locations uniformly on the right margin.
+3. **Typographic Hierarchy & Margins:** Set page margins between 0.5 and 0.75 inches and enforce consistent font hierarchies across headers, subheaders, and body text.
+4. **Bullet Point Length Discipline:** Limit bullet points to 1 to 2 lines, preventing overwhelming walls of text.
+5. **Clean Plain-Text & Markdown Export:** Generate clean, parser-safe markdown and text formats suitable for PDF compilation (`system.document.compile`).
+6. **Zero AI Formatting Fluff:** Straighten curly quotes and strip zero-width characters.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -358,3 +370,9 @@ Before submitting any resume:
 - ✅ Saved as .docx or .pdf
 - ✅ Proper file name
 - ✅ Proofread for consistency
+
+## Triggers
+Use when the request contains: resume formatter, format resume, clean resume layout, ats formatting, resume styling.
+
+## Output Contract
+Produces a cleanly formatted, copy-ready markdown resume document and layout compliance verification report. Scope for this skill is `system.document.compile`.

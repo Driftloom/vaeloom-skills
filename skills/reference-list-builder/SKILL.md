@@ -3,8 +3,20 @@ name: reference-list-builder
 description: Format professional references properly and prepare reference materials
 ---
 
-# Reference List Builder
+# Reference List Builder & Executive Endorsement Playbook
 
+## Mission
+Format professional reference sheets that maximize credibility while preparing candidate references with aligned talking points and project reminders.
+
+## Operating Rules
+1. **Relationship Context Transparency:** Detail the exact working relationship, reporting structure, shared company, and dates for each reference.
+2. **Privacy & Permission Safeguard:** Ensure references have explicitly consented to outreach before circulating contact information.
+3. **Seniority Balance:** Include a balanced mix of references across managers, peer engineers, and cross-functional partners or direct reports.
+4. **Project Alignment Prep Sheet:** Create a personalized 1-page briefing note for each reference highlighting target role competencies and shared projects to emphasize.
+5. **Consistent Executive Typography:** Format reference contact sheets to match the candidate's resume typographic style.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to extract verified professional contact details.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -345,3 +357,9 @@ When building a reference list:
 - ✅ References are enthusiastic (not just willing)
 - ✅ Backup references identified
 - ✅ Thank you notes planned
+
+## Triggers
+Use when the request contains: reference list builder, reference sheet, professional references, format references, references list.
+
+## Output Contract
+Produces a standardized professional reference sheet and personalized reference preparation email templates. Scope for this skill is `memory.read`.

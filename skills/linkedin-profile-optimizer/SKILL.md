@@ -3,8 +3,22 @@ name: linkedin-profile-optimizer
 description: Optimize LinkedIn profile for searchability, recruiter visibility, and engagement
 ---
 
-# LinkedIn Profile Optimizer
+# LinkedIn Profile Optimizer & Recruiter Discovery Playbook
 
+## Mission
+Transform candidate LinkedIn profiles into high-ranking, recruiter-optimized landing pages. Synthesizes search-indexed headlines, engaging 3-hook About sections, and metric-dense Experience entries grounded in the candidate's verified workspace memory vault, achieving maximum discovery across LinkedIn Recruiter searches while maintaining 100% truthful metrics.
+
+## Operating Rules
+1. **Three-Part Searchable Headline Architecture:** Format headlines using `[Target Title] | [2-3 Core High-Signal Keywords] | [Quantified Proof or Value Proposition]` within the 220-character limit.
+2. **The 3-Line Mobile Fold Hook:** Craft the first 3 lines (210 desktop characters / 140 mobile characters) of the About section to provoke curiosity and compel readers to tap 'see more'.
+3. **Google XYZ & Metric Grounding:** Format all Experience bullets using the XYZ framework (`Accomplished [X] as measured by [Y] by doing [Z]`), sourcing numbers directly from workspace memory (`memory.read`). Never fabricate metrics.
+4. **Strategic Recruiter Keyword Traversal:** Map top recruiter search competencies into Skills and Experience sections naturally without keyword stuffing or deceptive spam.
+5. **First-Person Conversational Professional Voice:** Write About sections in a polished, first-person narrative ('I build...', 'My focus is...') rather than third-person formality or AI tropes.
+6. **Zero AI Tells & Clean Typography:** Ban generic AI buzzwords (`delve`, `leverage`, `testament to`, `in today's fast-paced world`), straighten curly quotes, and eliminate zero-width spaces.
+7. **Featured Section High-Impact Sequencing:** Recommend portfolio order: 1) Flagship open-source or product build, 2) Technical deep dive or article, 3) High-signal award or credential.
+8. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to read candidate profile and career receipts without unapproved writes.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -368,3 +382,9 @@ When optimizing a LinkedIn profile:
 - Length (can be longer)
 - Keywords (broader than job-specific)
 - Call to action (add contact info)
+
+## Triggers
+Use when the request contains: linkedin profile optimizer, optimize linkedin, linkedin headline, linkedin about section, recruiter search optimization.
+
+## Output Contract
+Produces an end-to-end LinkedIn profile optimization blueprint containing: 1) 3 Headline Options (with character count and keyword density check), 2) Complete 3-Part About Section, 3) Experience Section Bullet Refinements, 4) Top 5 Recruiter Skills to Pin, 5) Profile Completeness & Rubric Scorecard (0-100). Scope for this skill is `memory.read`.

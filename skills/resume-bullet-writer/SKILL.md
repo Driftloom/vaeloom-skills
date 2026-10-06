@@ -3,8 +3,20 @@ name: resume-bullet-writer
 description: Transform weak resume bullets into achievement-focused statements with metrics and impact
 ---
 
-# Resume Bullet Writer
+# Resume Bullet Writer & Google XYZ Impact Engine
 
+## Mission
+Transform weak, task-oriented resume bullets into achievement-focused, metric-driven statements using Google's XYZ formula and active power verbs.
+
+## Operating Rules
+1. **Strict Google XYZ Architecture:** Format bullets as 'Accomplished [X] as measured by [Y] by doing [Z]'.
+2. **Active Power Verb Commencement:** Begin every bullet with a high-impact, active past-tense verb (e.g., Architected, Speared, Optimized, Accelerated).
+3. **Mandatory Metric Quantification:** Require specific numbers, percentages, time savings, or dollar amounts in every bullet.
+4. **Zero Empty Buzzwords:** Eliminate passive duty phrases ('responsible for', 'assisted with', 'worked on', 'helped to').
+5. **Single-Concept Conciseness:** Keep bullets tightly focused on one concrete outcome spanning 1 to 2 lines.
+6. **Strict Grounding in Candidate Vault:** Never invent metrics; extract authentic numbers from workspace records (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -435,3 +447,9 @@ For each resume bullet:
 5. ✅ Test length → Keep to 1-2 lines
 6. ✅ Read aloud → Ensure it sounds natural
 7. ✅ Verify relevance → Aligns with target role
+
+## Triggers
+Use when the request contains: resume bullet writer, write resume bullets, rewrite bullets, bullet points, resume bullet generator.
+
+## Output Contract
+Produces Before & After bullet transformation tables, extracted metric breakdowns, and copy-ready updated bullet points. Scope for this skill is `memory.read`.

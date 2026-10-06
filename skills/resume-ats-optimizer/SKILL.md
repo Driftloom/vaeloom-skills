@@ -3,8 +3,20 @@ name: resume-ats-optimizer
 description: Optimize resumes for Applicant Tracking Systems, check ATS compatibility, and analyze keyword match
 ---
 
-# Resume ATS Optimizer
+# Resume ATS Optimizer & Parser Verification Engine
 
+## Mission
+Audit and optimize resume text for maximum parseability and keyword extraction across major ATS engines (Workday, Greenhouse, Lever, Taleo, Ashby) without artificial keyword stuffing.
+
+## Operating Rules
+1. **Strict Parser Layout Safety:** Enforce single-column formatting, standard UTF-8 bullets, and standard section headings recognized by ATS parsers.
+2. **Contextual Keyword Integration:** Integrate relevant job description keywords into experiential context rather than artificial keyword lists.
+3. **Header Standard Naming:** Use canonical header titles ('Work Experience', 'Education', 'Skills') that parser regexes map reliably.
+4. **Typography & Character Safety:** Eliminate complex glyphs, ligatures, multiple font families, and invisible unicode formatting characters.
+5. **Honest Qualification Boundaries:** Never inject skills or technologies that the candidate has never used.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to inspect and refine candidate resumes.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -317,3 +329,9 @@ After optimization, the resume should:
 - Include all critical keywords 2-4x each
 - Read naturally (not keyword-stuffed)
 - Be ready to submit immediately
+
+## Triggers
+Use when the request contains: resume ats optimizer, ats resume check, optimize resume for ats, ats keywords, ats scanner.
+
+## Output Contract
+Produces an ATS Parseability Scorecard (0-100), Identified Missing Keywords list, and Fully Optimized Resume Text. Scope for this skill is `memory.read`.

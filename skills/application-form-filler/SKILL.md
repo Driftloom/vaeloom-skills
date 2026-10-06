@@ -3,8 +3,20 @@ name: application-form-filler
 description: Fill out job application form fields with context-aware, tailored answers drawn from the candidate's CV and the job description
 ---
 
-# Application Form Filler
+# Application Form Filler & Contextual ATS Response Engine
 
+## Mission
+Generate punchy, tailored, and context-aware responses to open-ended job application portal questions (Greenhouse, Lever, Ashby, Workday) without corporate fluff or generic cover-letter regurgitation.
+
+## Operating Rules
+1. **Direct Answer Principle:** Address the exact question prompt immediately in the opening sentence without rhetorical preambles or greetings.
+2. **Strict Length Calibration:** Calibrate responses to text box constraints (2-4 punchy sentences for short-answer prompts, 150-250 words for essay questions).
+3. **Real Project Grounding:** Anchor every capability statement to a concrete project or measured achievement drawn from workspace memory (`memory.read`).
+4. **Honest Qualification Alignment:** State exact years of experience and domain expertise accurately; never inflate competencies.
+5. **Conversational Authentic Tone:** Write in a natural, peer-to-peer engineering voice free of boilerplate corporate jargon.
+6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to draw verified candidate facts without unapproved writes.
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -245,3 +257,9 @@ When in doubt, shorter is better. Recruiters skim form answers. The goal is to b
 **Padding to fill space:**
 ❌ Adding projects or experience that aren't relevant just to look prolific
 ✅ Include only what's relevant to this specific role
+
+## Triggers
+Use when the request contains: application form filler, fill application, job application questions, tell us about yourself, why do you want to work here.
+
+## Output Contract
+Produces field-by-field copy-paste responses with word/character count verification, target company pain-point anchors, and real experience citations. Scope for this skill is `memory.read`.

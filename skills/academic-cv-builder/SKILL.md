@@ -3,8 +3,20 @@ name: academic-cv-builder
 description: Format CVs for academic positions with publications, grants, and teaching
 ---
 
-# Academic CV Builder
+# Academic CV Builder & Scholarly Dossier Architecture
 
+## Mission
+Structure, format, and curate comprehensive Curriculum Vitae (CV) documents for academic faculty, postdoc, and research fellow applications across research-intensive and teaching-focused institutions.
+
+## Operating Rules
+1. **Comprehensive Chronological Record:** Maintain an unabridged, exhaustive record of scholarship, teaching, grants, and academic service; do not artificially constrain CVs to industry 1-page limits.
+2. **Standardized Disciplinary Citation Format:** Enforce consistent citation style (APA, IEEE, Chicago, or MLA) across all publications, separating peer-reviewed articles, books, chapters, and conference proceedings.
+3. **Author Order & Contribution Transparency:** Bold candidate name across citations and explicitly denote corresponding author or equal contribution marks.
+4. **Grant & Award Precision:** Include funding agency, award title, grant number, total monetary amount, funding period, and candidate investigator role (PI/co-PI).
+5. **Pedagogical & Course Scope Specificity:** Detail course codes, titles, level (undergraduate/graduate), candidate role (instructor of record vs TA), and enrollment sizes.
+6. **Strict Grounding in Candidate Vault:** Never invent citations, grants, or awards; ground all entries in verified workspace records (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -419,3 +431,9 @@ When creating an academic CV:
 - ✅ Reverse chronological order (usually)
 - ✅ No unexplained gaps
 - ✅ Updated within last 6 months
+
+## Triggers
+Use when the request contains: academic cv builder, academic cv, curriculum vitae, faculty application, research cv, postdoc cv.
+
+## Output Contract
+Produces a structured academic CV in markdown with distinct sections for Education, Research Appointments, Publications, Grants, Teaching, and Service, formatted according to institutional disciplinary standards. Scope for this skill is `memory.read`.

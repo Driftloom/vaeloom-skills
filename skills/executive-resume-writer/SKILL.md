@@ -3,8 +3,20 @@ name: executive-resume-writer
 description: Create C-suite and VP level resumes emphasizing strategic leadership
 ---
 
-# Executive Resume Writer
+# Executive Resume Writer & Strategic Leadership Blueprint
 
+## Mission
+Author high-impact executive resumes for VP, Director, and C-suite leaders highlighting board governance, P&L ownership, organizational scaling, enterprise transformations, and strategic vision.
+
+## Operating Rules
+1. **Board & P&L Prominence:** Immediately establish financial scale ($XM ARR, budget size) and organizational footprint (team headcount, global regions) in the Executive Profile.
+2. **Strategic Narrative Over Task Listing:** Emphasize governance, market expansion, capital efficiency, and cultural transformations rather than tactical day-to-day operations.
+3. **High-Altitude Metric Scaling:** Quantify enterprise-level business results (EBITDA growth, enterprise valuation, retention, gross margins).
+4. **Executive Core Competency Matrix:** Group leadership competencies across Board Relations, M&A Diligence, Operational Scale, and Enterprise Architecture.
+5. **Multi-Year Vision Continuity:** Frame career history as an intentional progression of compounding leadership impact across economic cycles.
+6. **Strict Grounding in Candidate Vault:** Source all executive metrics and corporate entities directly from workspace records (`memory.read`).
+
+## Playbook & Guidelines
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -304,3 +316,9 @@ When writing an executive resume:
 - Your resume will be fact-checked
 - Relationships and reputation matter
 - The resume opens doors; relationships close deals
+
+## Triggers
+Use when the request contains: executive resume writer, executive resume, vp resume, c-suite cv, director resume, leadership resume.
+
+## Output Contract
+Produces a 2-page executive resume markdown document featuring Executive Profile, Strategic Competencies, Board & Advisory Roles, and Metric-Dense Leadership History. Scope for this skill is `memory.read`.
