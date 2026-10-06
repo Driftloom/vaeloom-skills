@@ -11,15 +11,21 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "skills" / "ats-audit" / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "skills" / "resume-optimization" / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "skills" / "salary-negotiation-playbook" / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "skills" / "star-interview-prep" / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "skills" / "linkedin-profile-optimizer" / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "skills" / "linkedin-humanizer" / "scripts"))
 
 from ats_checker import check_ats_compliance
 from xyz_scorer import score_bullet
 from comp_calculator import calculate_total_comp
 from star_validator import audit_star_story
+from headline_lint import lint_headline
+from humanize import pass_lexical, load_lexicon
+from lib.url_parser import parse_linkedin_url
 
 
 def run_evals() -> int:
@@ -109,6 +115,45 @@ def run_evals() -> int:
                         if res["status"] == a["status"]:
                             case_passed = False
                             failure_reasons.append(f"Expected status != {a['status']}, got {res['status']}")
+
+            elif skill == "linkedin-profile-optimizer":
+                if case["input_type"] == "headline":
+                    res = lint_headline(case["input"])
+                    for a in case["assertions"]:
+                        if a["type"] == "headline_valid":
+                            if res["valid"] != a["expected"]:
+                                case_passed = False
+                                failure_reasons.append(f"Expected valid {a['expected']}, got {res['valid']} ({res['issues']})")
+                        elif a["type"] == "score_above":
+                            if res["score"] < a["threshold"]:
+                                case_passed = False
+                                failure_reasons.append(f"Expected score >= {a['threshold']}, got {res['score']}")
+                elif case["input_type"] == "url":
+                    parsed = parse_linkedin_url(case["input"])
+                    for a in case["assertions"]:
+                        if a["type"] == "parsed_url_type":
+                            if parsed["url_type"] != a["expected"]:
+                                case_passed = False
+                                failure_reasons.append(f"Expected url_type {a['expected']}, got {parsed['url_type']}")
+                        elif a["type"] == "parsed_activity_id":
+                            if parsed["post_activity_id"] != a["expected"]:
+                                case_passed = False
+                                failure_reasons.append(f"Expected activity_id {a['expected']}, got {parsed['post_activity_id']}")
+
+            elif skill == "linkedin-humanizer":
+                lex = load_lexicon()
+                cleaned, hits = pass_lexical(case["input"], lex)
+                for a in case["assertions"]:
+                    if a["type"] == "slop_scrubbed":
+                        for bw in a["banned_words"]:
+                            if bw in cleaned.lower():
+                                case_passed = False
+                                failure_reasons.append(f"Banned word '{bw}' still present in cleaned text: '{cleaned}'")
+                    elif a["type"] == "facts_preserved":
+                        for fact in a["required_facts"]:
+                            if fact not in cleaned:
+                                case_passed = False
+                                failure_reasons.append(f"Required fact '{fact}' dropped from cleaned text: '{cleaned}'")
 
             if case_passed:
                 print(f"[PASS] {case_id}: {name}")

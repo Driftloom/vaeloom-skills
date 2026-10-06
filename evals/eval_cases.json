@@ -60,5 +60,38 @@
       { "type": "we_trap_detected", "expected": true },
       { "type": "status_not_equals", "status": "PASS" }
     ]
+  },
+  {
+    "id": "eval-li-headline-001",
+    "name": "LinkedIn Headline Budget & Formula Lint",
+    "skill": "linkedin-profile-optimizer",
+    "input_type": "headline",
+    "input": "Staff Platform Engineer | Scaling Distributed RAG Systems & Streaming Pipelines | Reduced Egress Cost by $140K",
+    "assertions": [
+      { "type": "headline_valid", "expected": true },
+      { "type": "score_above", "threshold": 80 }
+    ]
+  },
+  {
+    "id": "eval-li-humanize-001",
+    "name": "LinkedIn Humanizer Fact Preservation & Slop Scrubbing",
+    "skill": "linkedin-humanizer",
+    "input_type": "post_draft",
+    "input": "We leveraged a robust architecture to delve into 47 services and reduce deploy times from 52 mins to 8 mins in Q3.",
+    "assertions": [
+      { "type": "slop_scrubbed", "banned_words": ["leveraged", "robust", "delve into"] },
+      { "type": "facts_preserved", "required_facts": ["47", "52", "8", "Q3"] }
+    ]
+  },
+  {
+    "id": "eval-li-url-001",
+    "name": "LinkedIn URL URN Normalization",
+    "skill": "linkedin-profile-optimizer",
+    "input_type": "url",
+    "input": "https://www.linkedin.com/posts/techlead_activity-7448808898326654978-iW20",
+    "assertions": [
+      { "type": "parsed_url_type", "expected": "post" },
+      { "type": "parsed_activity_id", "expected": "7448808898326654978" }
+    ]
   }
 ]

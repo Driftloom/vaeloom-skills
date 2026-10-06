@@ -57,8 +57,10 @@ vaeloom-skills/
 | [`creative-portfolio-resume`](skills/creative-portfolio-resume/SKILL.md) | Balances aesthetic visual presentation with strict ATS compliance. |
 | [`executive-resume-writer`](skills/executive-resume-writer/SKILL.md) | C-suite and VP level leadership resumes emphasizing P&L and scale. |
 | [`interview-prep-generator`](skills/interview-prep-generator/SKILL.md) | Question prediction, STAR answer banking, and reverse interview queries. |
-| [`job-description-analyzer`](skills/job-description-analyzer/SKILL.md) | Hard/soft skill extraction, qualification segmentation, and gap analysis. |
-| [`linkedin-profile-optimizer`](skills/linkedin-profile-optimizer/SKILL.md) | Headline branding, narrative summary, and recruiter SEO keywords. |
+| [`linkedin-profile-optimizer`](skills/linkedin-profile-optimizer/SKILL.md) | Headline & profile conversion optimization, 220-char budget linting, and 12-criteria 100-pt audit. | `scripts/profile_evaluator.py`, `scripts/headline_lint.py`, `references/rubric.json` |
+| [`linkedin-interviewer`](skills/linkedin-interviewer/SKILL.md) | Diagnostic interview builder compiling verified receipts, turning points, and scars into a Story Bank. | `scripts/story_bank_validator.py`, `references/question-bank.md`, `templates/story_bank.md` |
+| [`linkedin-humanizer`](skills/linkedin-humanizer/SKILL.md) | Strips invisible unicode smuggling, normalizes typography, and removes 113 AI tropes while preserving numbers. | `scripts/humanize.py`, `scripts/detect.py`, `references/slop.json` |
+| [`linkedin-post-writer`](skills/linkedin-post-writer/SKILL.md) | Drafts viral-ready, high-dwell-time posts using 21 hook formulas and 10 founder angles. | `references/hooks.json`, `references/founder-topics.md` |
 | [`offer-comparison-analyzer`](skills/offer-comparison-analyzer/SKILL.md) | Multi-offer side-by-side total compensation and benefits comparison. |
 | [`portfolio-case-study-writer`](skills/portfolio-case-study-writer/SKILL.md) | Deep engineering and product case studies with architecture impact. |
 | [`reference-list-builder`](skills/reference-list-builder/SKILL.md) | Formatted reference sheets with context briefings for advocates. |
