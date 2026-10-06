@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ATS Parser Rules & Ontologies",
+  "version": "2.0.0",
+  "standard_headers": [
+    "WORK EXPERIENCE",
+    "PROFESSIONAL EXPERIENCE",
+    "EXPERIENCE",
+    "EMPLOYMENT HISTORY",
+    "EDUCATION",
+    "TECHNICAL SKILLS",
+    "SKILLS",
+    "CERTIFICATIONS",
+    "PROJECTS"
+  ],
+  "disallowed_headers": [
+    "WHERE I'VE BEEN",
+    "MY JOURNEY",
+    "CAPABILITIES MATRIX",
+    "STUFF I BUILT",
+    "BACKGROUND"
+  ],
+  "date_patterns": [
+    "^(0[1-9]|1[0-2])\\/\\d{4}\\s*[-–—]\\s*((0[1-9]|1[0-2])\\/\\d{4}|present|current)$",
+    "^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\s+\\d{4}\\s*[-–—]\\s*((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\s+\\d{4}|present|current)$"
+  ],
+  "prohibited_elements": [
+    {
+      "type": "multi_column_table",
+      "severity": "critical",
+      "reason": "Sovren and Apache PDFBox interleave column text streams into scrambled sentences."
+    },
+    {
+      "type": "text_box_frame",
+      "severity": "critical",
+      "reason": "Text inside floating frames is ignored by 55% of OCR and PDF text extraction engines."
+    },
+    {
+      "type": "icon_font",
+      "severity": "high",
+      "reason": "FontAwesome glyphs translate to null bytes or unicode replacement characters (\\uFFFD)."
+    },
+    {
+      "type": "header_footer_metadata",
+      "severity": "high",
+      "reason": "Contact details placed in PDF header/footer margins are dropped by ATS parsers."
+    }
+  ]
+}

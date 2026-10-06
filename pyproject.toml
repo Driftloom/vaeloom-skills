@@ -1,0 +1,26 @@
+[project]
+name = "vaeloom-skills"
+version = "2.0.0"
+description = "Vaeloom Career Intelligence & Agent Skills Suite"
+authors = [{ name = "Driftloom / Vaeloom Core", email = "engineering@driftloom.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestDeprecationWarning",
+]

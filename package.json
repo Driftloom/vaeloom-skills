@@ -1,20 +1,27 @@
 {
   "name": "@vaeloom/skills",
-  "version": "1.0.0",
-  "description": "Production-grade Career Intelligence Skills for autonomous AI agents",
-  "license": "Apache-2.0",
+  "version": "2.0.0",
+  "description": "Production-grade Career Intelligence Skills, Evals, and Tests for autonomous AI agents",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Driftloom/vaeloom-skills.git"
+  },
+  "scripts": {
+    "test": "pytest tests/ -v",
+    "eval": "python evals/run_evals.py",
+    "lint": "python -m pytest tests/test_skills_schema.py -q"
   },
   "keywords": [
     "vaeloom",
     "ai-agent",
     "skills",
+    "agentskills",
     "career-intelligence",
     "ats",
     "resume",
     "interview-prep",
-    "salary-negotiation"
+    "salary-negotiation",
+    "evals"
   ]
 }

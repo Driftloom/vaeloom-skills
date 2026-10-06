@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Harvard OCS Power Action Verbs Taxonomy",
+  "version": "2.0.0",
+  "categories": {
+    "architecture_and_engineering": [
+      "Architected",
+      "Engineered",
+      "Designed",
+      "Orchestrated",
+      "Spearheaded",
+      "Deployed",
+      "Fabricated",
+      "Standardized",
+      "Instituted"
+    ],
+    "performance_and_scale": [
+      "Optimized",
+      "Accelerated",
+      "Streamlined",
+      "Benchmarked",
+      "Scaled",
+      "Condensed",
+      "Restructured",
+      "Refactored"
+    ],
+    "financial_and_efficiency": [
+      "Slashed",
+      "Curtailed",
+      "Consolidated",
+      "Monetized",
+      "Yielded",
+      "Maximized",
+      "Reduced",
+      "Eliminated"
+    ],
+    "data_and_reliability": [
+      "Formulated",
+      "Diagnosed",
+      "Automated",
+      "Rectified",
+      "Synthesized",
+      "Forecasted",
+      "Modeled",
+      "Mitigated"
+    ],
+    "leadership_and_mentorship": [
+      "Directed",
+      "Championed",
+      "Mobilized",
+      "Mentored",
+      "Guided",
+      "Cultivated",
+      "Negotiated",
+      "Coordinated"
+    ]
+  },
+  "banned_weak_phrases": [
+    "Responsible for",
+    "Assisted with",
+    "Worked on",
+    "Tasked with",
+    "Helped team",
+    "Participated in",
+    "Involved in",
+    "Handled duties"
+  ]
+}

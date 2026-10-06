@@ -1,0 +1,64 @@
+[
+  {
+    "id": "eval-ats-001",
+    "name": "ATS Multi-column Column Trapping",
+    "skill": "ats-audit",
+    "input_type": "document_snippet",
+    "input": "# Alex Smith\n| Skill | Years |\n| Python | 5 |\n| AWS | 4 |\n\n## Experience\nAcme Corp | Engineer\n2022 - Present",
+    "assertions": [
+      { "type": "rule_violation_triggered", "rule": "TABLE_LAYOUT_DETECTED" },
+      { "type": "score_below", "threshold": 80 }
+    ]
+  },
+  {
+    "id": "eval-xyz-001",
+    "name": "Passive Verb Replacement & Metric Scorer",
+    "skill": "resume-optimization",
+    "input_type": "bullet_point",
+    "input": "Responsible for managing the payment microservice and helping with database issues.",
+    "assertions": [
+      { "type": "passive_phrase_detected", "phrase": "responsible for" },
+      { "type": "missing_metric_detected", "expected": true },
+      { "type": "rating_equals", "rating": "NEEDS_REVISION" }
+    ]
+  },
+  {
+    "id": "eval-xyz-002",
+    "name": "High Agency Metric-Driven XYZ Bullet",
+    "skill": "resume-optimization",
+    "input_type": "bullet_point",
+    "input": "Architected distributed caching layer, reducing p99 API latency by 45% (from 400ms to 220ms) across 5M daily users using Redis and Celery.",
+    "assertions": [
+      { "type": "rating_equals", "rating": "EXCELLENT" },
+      { "type": "score_above", "threshold": 85 }
+    ]
+  },
+  {
+    "id": "eval-comp-001",
+    "name": "Total Comp Year-1 Calculation",
+    "skill": "salary-negotiation-playbook",
+    "input_type": "comp_inputs",
+    "input": {
+      "base": 180000,
+      "bonus_pct": 10,
+      "equity": 240000,
+      "years": 4,
+      "signing": 20000
+    },
+    "assertions": [
+      { "type": "expected_year_1_tc", "expected": 278000 },
+      { "type": "expected_steady_state_tc", "expected": 258000 }
+    ]
+  },
+  {
+    "id": "eval-star-001",
+    "name": "We-Trap Detection in Behavioral Interview",
+    "skill": "star-interview-prep",
+    "input_type": "interview_story",
+    "input": "Situation: We had a major issue. Task: Our team had to fix it. Action: We decided to deploy new code and we monitored it together. Result: We were happy.",
+    "assertions": [
+      { "type": "we_trap_detected", "expected": true },
+      { "type": "status_not_equals", "status": "PASS" }
+    ]
+  }
+]

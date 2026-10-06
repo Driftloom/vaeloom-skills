@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Amazon Bar Raiser & Tier-1 Behavioral Evaluation Rubric",
+  "version": "2.0.0",
+  "competencies": [
+    {
+      "id": "customer_obsession",
+      "name": "Customer Obsession",
+      "positive_signals": [
+        "Advocated for customer experience despite internal technical inertia or friction.",
+        "Refused to launch a flawed product to hit an artificial internal deadline.",
+        "Dug into telemetry metrics to understand unvoiced customer pain."
+      ],
+      "negative_signals": [
+        "Prioritized internal engineering vanity projects over real customer bugs.",
+        "Dismissed user confusion as user error."
+      ]
+    },
+    {
+      "id": "ownership",
+      "name": "Ownership",
+      "positive_signals": [
+        "Stepped up outside direct ticket scope to prevent a production failure.",
+        "Took full responsibility for a mistake without shifting blame to teammates or juniors.",
+        "Built lasting documentation and automated tests for future engineers."
+      ],
+      "negative_signals": [
+        "Said 'that's not my job' or blamed product management.",
+        "Left temporary hacks in production without a remediation ticket."
+      ]
+    },
+    {
+      "id": "bias_for_action",
+      "name": "Bias for Action",
+      "positive_signals": [
+        "Made calculated, high-velocity technical decisions under incomplete data.",
+        "Implemented rollback strategies and feature flags to manage deployment risk.",
+        "Chose iterative deployment over endless architecture paralysis."
+      ],
+      "negative_signals": [
+        "Waited for committee consensus before fixing an active customer problem.",
+        "Over-engineered simple features for hypothetical future requirements."
+      ]
+    },
+    {
+      "id": "dive_deep",
+      "name": "Dive Deep",
+      "positive_signals": [
+        "Analyzed database execution plans, kernel logs, and network packet traces personally.",
+        "Refused to accept surface symptom explanations for intermittent failures.",
+        "Understood the root cause and implemented preventive architectural controls."
+      ],
+      "negative_signals": [
+        "Rebooted servers to resolve memory leaks without capturing core dumps.",
+        "Relied purely on teammate opinions without verifying data."
+      ]
+    }
+  ]
+}

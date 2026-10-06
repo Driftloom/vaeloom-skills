@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Salary Negotiation Scripts & Counter-Offer Scenarios",
+  "version": "2.0.0",
+  "scenarios": [
+    {
+      "id": "recruiter_screen_deflection",
+      "stage": "initial_interview",
+      "prompt": "What are your salary expectations for this role?",
+      "response_script": "I’m focused on finding the right role where I can make an immediate technical impact on your distributed systems roadmap. Since I don't yet have full context on the team's scope and the complete benefits package, I'm confident that if we determine there’s a strong mutual fit, you'll make a competitive offer aligned with the market for this level. What is the approved compensation range for this position?"
+    },
+    {
+      "id": "verbal_offer_reception",
+      "stage": "post_offer",
+      "prompt": "We’d like to extend an offer today! Can you confirm acceptance?",
+      "response_script": "Thank you so much! I really enjoyed meeting the team, and I’m genuinely excited about the challenge of scaling the platform. This is an important career decision, so I’d like to review the formal offer letter and equity documentation in detail with my family. Could you email over the written offer details? I will review everything thoroughly and get back to you within 48 hours."
+    },
+    {
+      "id": "capped_base_pivot",
+      "stage": "negotiation_counter",
+      "prompt": "Our salary band strictly caps base salary at $175,000 for this level.",
+      "response_script": "I completely understand and respect internal band constraints. Since base salary is fixed, would you be able to bridge the gap through a one-time signing bonus of $20,000, or an additional equity allocation? That would bring the first-year compensation to where I need it to be and enable me to commit today."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Enterprise ATS Portal Endpoints & Sourcing Signatures",
+  "version": "2.0.0",
+  "endpoints": [
+    {
+      "platform": "Greenhouse",
+      "domain_pattern": "^boards\\.greenhouse\\.io$",
+      "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs",
+      "rate_limit_rpm": 60,
+      "requires_auth": false
+    },
+    {
+      "platform": "Lever",
+      "domain_pattern": "^jobs\\.lever\\.co$",
+      "api_endpoint": "https://api.lever.co/v0/postings/{company}",
+      "rate_limit_rpm": 60,
+      "requires_auth": false
+    },
+    {
+      "platform": "Ashby",
+      "domain_pattern": "^jobs\\.ashbyhq\\.com$",
+      "api_endpoint": "https://api.ashbyhq.com/posting-api/job-board/{company}",
+      "rate_limit_rpm": 30,
+      "requires_auth": false
+    },
+    {
+      "platform": "Workday",
+      "domain_pattern": ".*\\.myworkdayjobs\\.com$",
+      "api_endpoint": "https://{company}.wd5.myworkdayjobs.com/wday/cxs/{company}/{board}/jobs",
+      "rate_limit_rpm": 20,
+      "requires_auth": false
+    }
+  ]
+}
