@@ -1,0 +1,20 @@
+{
+  "name": "@vaeloom/skills",
+  "version": "1.0.0",
+  "description": "Production-grade Career Intelligence Skills for autonomous AI agents",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Driftloom/vaeloom-skills.git"
+  },
+  "keywords": [
+    "vaeloom",
+    "ai-agent",
+    "skills",
+    "career-intelligence",
+    "ats",
+    "resume",
+    "interview-prep",
+    "salary-negotiation"
+  ]
+}
