@@ -43,6 +43,10 @@ jobs:
         run: |
           pytest tests/test_score_skills.py -v
 
+      - name: Run Eval Suite Integrity Tests
+        run: |
+          pytest tests/test_eval_suite_integrity.py -v
+
       - name: Run Skills Evals Benchmark Suite
         run: |
           python evals/run_evals.py

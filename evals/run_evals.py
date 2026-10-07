@@ -28,6 +28,80 @@ from humanize import pass_lexical, load_lexicon
 from lib.url_parser import parse_linkedin_url
 
 
+# Assertion types each skill's evaluation engine actually implements.
+#
+# This registry exists because the runner's if/elif chains had no catch-all: an
+# assertion type the chain did not recognise fell straight through and the case
+# was reported PASS. Verified by adding a case asserting
+# ``{"type": "rule_violation_typoed"}`` -- 17/17 passed, exit 0. A typo, a
+# rename, or a case written against a skill whose branch does not exist would
+# therefore assert nothing and go green, which is worse than having no eval.
+#
+# Every case is validated against this before a single rollout runs, so a
+# misspelled assertion is a hard failure that names the skill and the type.
+HANDLED_ASSERTIONS: dict[str, frozenset[str]] = {
+    "ats-audit": frozenset({
+        "rule_violation_triggered", "no_rule_violation", "score_below", "score_above",
+    }),
+    "resume-optimization": frozenset({
+        "passive_phrase_detected", "missing_metric_detected", "rating_equals",
+        "score_above", "score_below",
+    }),
+    "salary-negotiation-playbook": frozenset({
+        "expected_year_1_tc", "expected_steady_state_tc",
+    }),
+    "star-interview-prep": frozenset({
+        "we_trap_detected", "status_not_equals",
+    }),
+    "linkedin-profile-optimizer": frozenset({
+        "headline_valid", "score_above", "parsed_url_type", "parsed_activity_id",
+    }),
+    "linkedin-humanizer": frozenset({
+        "slop_scrubbed", "facts_preserved",
+    }),
+}
+
+
+def validate_cases(cases: list[dict]) -> list[str]:
+    """Return a list of contract violations. Empty means the suite is runnable."""
+    problems: list[str] = []
+    seen_ids: dict[str, int] = {}
+
+    for case in cases:
+        cid = case.get("id", "<missing id>")
+        seen_ids[cid] = seen_ids.get(cid, 0) + 1
+
+        skill = case.get("skill")
+        if skill not in HANDLED_ASSERTIONS:
+            problems.append(
+                f"{cid}: skill {skill!r} has no evaluation branch in run_evals.py "
+                f"(known: {sorted(HANDLED_ASSERTIONS)})"
+            )
+            continue
+
+        assertions = case.get("assertions")
+        if not assertions:
+            # Covers both a missing key and an empty list: a case with nothing to
+            # check would be reported PASS, which is the failure mode the whole
+            # registry exists to prevent.
+            problems.append(f"{cid}: case declares no assertions; it cannot fail")
+            continue
+
+        for assertion in assertions:
+            atype = assertion.get("type")
+            if atype not in HANDLED_ASSERTIONS[skill]:
+                problems.append(
+                    f"{cid}: assertion type {atype!r} is not implemented for {skill!r}. "
+                    f"Implemented: {sorted(HANDLED_ASSERTIONS[skill])}. An unrecognised "
+                    f"type is reported as PASS, so this case would assert nothing."
+                )
+
+    for cid, count in sorted(seen_ids.items()):
+        if count > 1:
+            problems.append(f"{cid}: id appears {count} times; ids must be unique")
+    return problems
+
+
 def run_evals() -> int:
     cases_file = REPO_ROOT / "evals" / "eval_cases.json"
     if not cases_file.is_file():
@@ -37,6 +111,19 @@ def run_evals() -> int:
     cases = json.loads(cases_file.read_text(encoding="utf-8"))
     passed = 0
     failed = 0
+
+    problems = validate_cases(cases)
+    if problems:
+        print("==================================================")
+        print("      VAELOOM CAREER SKILLS EVALS HARNESS        ")
+        print("==================================================")
+        print(f"[FATAL] {len(problems)} eval contract violation(s); nothing was run:\n")
+        for p in problems:
+            print(f"  - {p}")
+        print("-" * 50)
+        print(f"Eval Results: 0/{len(cases)} Passed (0.0% Accuracy)")
+        print("==================================================")
+        return 1
 
     print("==================================================")
     print("      VAELOOM CAREER SKILLS EVALS HARNESS        ")
@@ -57,10 +144,24 @@ def run_evals() -> int:
                         if not any(v["type"] == a["rule"] for v in res["violations"]):
                             case_passed = False
                             failure_reasons.append(f"Expected rule violation '{a['rule']}' not triggered")
+                    elif a["type"] == "no_rule_violation":
+                        # Negative control: a compliant document must NOT be
+                        # flagged. Without these the suite only proves the
+                        # checker can complain, never that it can stay quiet.
+                        if any(v["type"] == a["rule"] for v in res["violations"]):
+                            case_passed = False
+                            failure_reasons.append(
+                                f"Rule violation '{a['rule']}' fired on a compliant document: "
+                                f"{[v['message'] for v in res['violations'] if v['type'] == a['rule']]}"
+                            )
                     elif a["type"] == "score_below":
                         if res["score"] >= a["threshold"]:
                             case_passed = False
                             failure_reasons.append(f"Expected score < {a['threshold']}, got {res['score']}")
+                    elif a["type"] == "score_above":
+                        if res["score"] < a["threshold"]:
+                            case_passed = False
+                            failure_reasons.append(f"Expected score >= {a['threshold']}, got {res['score']}")
 
             elif skill == "resume-optimization":
                 res = score_bullet(case["input"])
@@ -81,6 +182,10 @@ def run_evals() -> int:
                         if res["score"] < a["threshold"]:
                             case_passed = False
                             failure_reasons.append(f"Expected score >= {a['threshold']}, got {res['score']}")
+                    elif a["type"] == "score_below":
+                        if res["score"] >= a["threshold"]:
+                            case_passed = False
+                            failure_reasons.append(f"Expected score < {a['threshold']}, got {res['score']}")
 
             elif skill == "salary-negotiation-playbook":
                 inp = case["input"]

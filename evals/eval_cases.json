@@ -6,8 +6,14 @@
     "input_type": "document_snippet",
     "input": "# Alex Smith\n| Skill | Years |\n| Python | 5 |\n| AWS | 4 |\n\n## Experience\nAcme Corp | Engineer\n2022 - Present",
     "assertions": [
-      { "type": "rule_violation_triggered", "rule": "TABLE_LAYOUT_DETECTED" },
-      { "type": "score_below", "threshold": 80 }
+      {
+        "type": "rule_violation_triggered",
+        "rule": "TABLE_LAYOUT_DETECTED"
+      },
+      {
+        "type": "score_below",
+        "threshold": 80
+      }
     ]
   },
   {
@@ -17,9 +23,18 @@
     "input_type": "bullet_point",
     "input": "Responsible for managing the payment microservice and helping with database issues.",
     "assertions": [
-      { "type": "passive_phrase_detected", "phrase": "responsible for" },
-      { "type": "missing_metric_detected", "expected": true },
-      { "type": "rating_equals", "rating": "NEEDS_REVISION" }
+      {
+        "type": "passive_phrase_detected",
+        "phrase": "responsible for"
+      },
+      {
+        "type": "missing_metric_detected",
+        "expected": true
+      },
+      {
+        "type": "rating_equals",
+        "rating": "NEEDS_REVISION"
+      }
     ]
   },
   {
@@ -29,8 +44,14 @@
     "input_type": "bullet_point",
     "input": "Architected distributed caching layer, reducing p99 API latency by 45% (from 400ms to 220ms) across 5M daily users using Redis and Celery.",
     "assertions": [
-      { "type": "rating_equals", "rating": "EXCELLENT" },
-      { "type": "score_above", "threshold": 85 }
+      {
+        "type": "rating_equals",
+        "rating": "EXCELLENT"
+      },
+      {
+        "type": "score_above",
+        "threshold": 85
+      }
     ]
   },
   {
@@ -46,8 +67,14 @@
       "signing": 20000
     },
     "assertions": [
-      { "type": "expected_year_1_tc", "expected": 278000 },
-      { "type": "expected_steady_state_tc", "expected": 258000 }
+      {
+        "type": "expected_year_1_tc",
+        "expected": 278000
+      },
+      {
+        "type": "expected_steady_state_tc",
+        "expected": 258000
+      }
     ]
   },
   {
@@ -57,8 +84,14 @@
     "input_type": "interview_story",
     "input": "Situation: We had a major issue. Task: Our team had to fix it. Action: We decided to deploy new code and we monitored it together. Result: We were happy.",
     "assertions": [
-      { "type": "we_trap_detected", "expected": true },
-      { "type": "status_not_equals", "status": "PASS" }
+      {
+        "type": "we_trap_detected",
+        "expected": true
+      },
+      {
+        "type": "status_not_equals",
+        "status": "PASS"
+      }
     ]
   },
   {
@@ -68,8 +101,14 @@
     "input_type": "headline",
     "input": "Staff Platform Engineer | Scaling Distributed RAG Systems & Streaming Pipelines | Reduced Egress Cost by $140K",
     "assertions": [
-      { "type": "headline_valid", "expected": true },
-      { "type": "score_above", "threshold": 80 }
+      {
+        "type": "headline_valid",
+        "expected": true
+      },
+      {
+        "type": "score_above",
+        "threshold": 80
+      }
     ]
   },
   {
@@ -79,8 +118,23 @@
     "input_type": "post_draft",
     "input": "We leveraged a robust architecture to delve into 47 services and reduce deploy times from 52 mins to 8 mins in Q3.",
     "assertions": [
-      { "type": "slop_scrubbed", "banned_words": ["leveraged", "robust", "delve into"] },
-      { "type": "facts_preserved", "required_facts": ["47", "52", "8", "Q3"] }
+      {
+        "type": "slop_scrubbed",
+        "banned_words": [
+          "leveraged",
+          "robust",
+          "delve into"
+        ]
+      },
+      {
+        "type": "facts_preserved",
+        "required_facts": [
+          "47",
+          "52",
+          "8",
+          "Q3"
+        ]
+      }
     ]
   },
   {
@@ -90,8 +144,188 @@
     "input_type": "url",
     "input": "https://www.linkedin.com/posts/techlead_activity-7448808898326654978-iW20",
     "assertions": [
-      { "type": "parsed_url_type", "expected": "post" },
-      { "type": "parsed_activity_id", "expected": "7448808898326654978" }
+      {
+        "type": "parsed_url_type",
+        "expected": "post"
+      },
+      {
+        "type": "parsed_activity_id",
+        "expected": "7448808898326654978"
+      }
+    ]
+  },
+  {
+    "id": "eval-ats-002",
+    "name": "ATS Contact Header Missing From Body",
+    "skill": "ats-audit",
+    "input_type": "document_snippet",
+    "input": "# Jordan Blake\n\n## Work Experience\n**Acme Corp** -- Staff Engineer, 2021 - Present\n\n## Education\nBSc Computer Science, State University, 2017\n",
+    "assertions": [
+      {
+        "type": "rule_violation_triggered",
+        "rule": "EMAIL_NOT_IN_HEADER"
+      },
+      {
+        "type": "rule_violation_triggered",
+        "rule": "PHONE_NOT_IN_HEADER"
+      }
+    ]
+  },
+  {
+    "id": "eval-ats-003",
+    "name": "ATS Creative Section Header Breaks Classifier Ontology",
+    "skill": "ats-audit",
+    "input_type": "document_snippet",
+    "input": "# Sam Rivera\nsam@example.com | (555) 010-2233\n\n## Where I've Been\nAcme Corp, Engineer, 2020 - Present\n\n## Capabilities Matrix\nPython, AWS, Docker\n",
+    "assertions": [
+      {
+        "type": "rule_violation_triggered",
+        "rule": "CREATIVE_HEADER_DISALLOWED"
+      }
+    ]
+  },
+  {
+    "id": "eval-ats-004",
+    "name": "ATS Missing Standard Experience Section",
+    "skill": "ats-audit",
+    "input_type": "document_snippet",
+    "input": "# Kim Patel\nkim@example.com | 555-010-7788\n\n## My Journey\nBuilt things at various companies.\n\n## Studies\nComputer Science\n",
+    "assertions": [
+      {
+        "type": "rule_violation_triggered",
+        "rule": "MISSING_EXPERIENCE_SECTION"
+      }
+    ]
+  },
+  {
+    "id": "eval-ats-005",
+    "name": "ATS NEGATIVE CONTROL: compliant single-column resume must pass clean",
+    "skill": "ats-audit",
+    "input_type": "document_snippet",
+    "input": "# Taylor Nkemdirim\ntaylor@example.com | (555) 010-4455 | linkedin.com/in/taylor\n\n## Professional Summary\nStaff engineer focused on distributed systems.\n\n## Work Experience\n\n**Acme Corp** -- Staff Engineer, 2021 - Present\nReduced p99 latency 40% by rebalancing the read path.\n\n## Education\nBSc Computer Science, State University, 2017\n\n## Technical Skills\nPython, Go, AWS, Kubernetes\n",
+    "assertions": [
+      {
+        "type": "no_rule_violation",
+        "rule": "TABLE_LAYOUT_DETECTED"
+      },
+      {
+        "type": "no_rule_violation",
+        "rule": "EMAIL_NOT_IN_HEADER"
+      },
+      {
+        "type": "no_rule_violation",
+        "rule": "PHONE_NOT_IN_HEADER"
+      },
+      {
+        "type": "no_rule_violation",
+        "rule": "CREATIVE_HEADER_DISALLOWED"
+      },
+      {
+        "type": "no_rule_violation",
+        "rule": "MISSING_EXPERIENCE_SECTION"
+      },
+      {
+        "type": "score_above",
+        "threshold": 80
+      }
+    ]
+  },
+  {
+    "id": "eval-xyz-003",
+    "name": "XYZ DEGENERATE INPUT: empty bullet must not crash or score",
+    "skill": "resume-optimization",
+    "input_type": "bullet_point",
+    "input": "",
+    "assertions": [
+      {
+        "type": "missing_metric_detected",
+        "expected": true
+      },
+      {
+        "type": "score_below",
+        "threshold": 40
+      }
+    ]
+  },
+  {
+    "id": "eval-comp-002",
+    "name": "Total Comp ZERO-BONUS case",
+    "skill": "salary-negotiation-playbook",
+    "input_type": "comp_inputs",
+    "input": {
+      "base": 180000,
+      "bonus_pct": 0,
+      "equity": 0,
+      "years": 3,
+      "signing": 0
+    },
+    "assertions": [
+      {
+        "type": "expected_year_1_tc",
+        "expected": 180000
+      },
+      {
+        "type": "expected_steady_state_tc",
+        "expected": 180000
+      }
+    ]
+  },
+  {
+    "id": "eval-star-002",
+    "name": "STAR NEGATIVE CONTROL: individual agency with metrics must not trip the we-trap",
+    "skill": "star-interview-prep",
+    "input_type": "interview_story",
+    "input": "I owned the migration of 14 services off the legacy queue. I cut p99 latency 45% and reduced infrastructure spend by $120k per year.",
+    "assertions": [
+      {
+        "type": "we_trap_detected",
+        "expected": false
+      },
+      {
+        "type": "status_not_equals",
+        "status": "FAIL"
+      }
+    ]
+  },
+  {
+    "id": "eval-li-headline-002",
+    "name": "LinkedIn NEGATIVE CONTROL: over-budget headline must be rejected",
+    "skill": "linkedin-profile-optimizer",
+    "input_type": "headline",
+    "input": "Passionate self-taught software engineer and lifelong learner who loves solving hard problems with cutting edge technology and mentoring teams to deliver value across the entire organization",
+    "assertions": [
+      {
+        "type": "headline_valid",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "id": "eval-li-humanize-002",
+    "name": "LinkedIn Humanizer NEGATIVE CONTROL: clean prose must pass through untouched",
+    "skill": "linkedin-humanizer",
+    "input_type": "post_draft",
+    "input": "We cut deploy time from 52 minutes to 8 in Q3 by moving 47 services onto one pipeline. That was the whole change.",
+    "assertions": [
+      {
+        "type": "facts_preserved",
+        "required_facts": [
+          "52",
+          "8",
+          "Q3",
+          "47"
+        ]
+      },
+      {
+        "type": "slop_scrubbed",
+        "banned_words": [
+          "delve",
+          "leverage",
+          "testament",
+          "robust",
+          "in today"
+        ]
+      }
     ]
   }
 ]
