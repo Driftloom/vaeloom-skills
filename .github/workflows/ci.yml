@@ -51,6 +51,12 @@ jobs:
         run: |
           pytest tests/test_layer3_judge.py -v
 
+      - name: Run Layer 3 Variance Analyser Tests
+        # Guards the rule that a judged number is only a result if it exceeds
+        # judge noise. The analyser has shipped two inverted answers already.
+        run: |
+          pytest tests/test_layer3_variance.py -v
+
       - name: Verify the Layer 3 harness executes end to end (synthetic)
         # Proves the generation -> evidence -> judge -> aggregate path runs.
         # The stub backend is deterministic and free, and its output is labelled
@@ -58,6 +64,14 @@ jobs:
         # Live judging needs credentials and is run separately.
         run: |
           python evals/layer3_judge.py --backend stub --split held_out --seeds 3
+
+      - name: Verify the variance analyser runs against the shipped live reports
+        # The live reports are committed, so the signal-vs-noise conclusions in
+        # docs/layer3-judging.md must stay reproducible. This asserts the
+        # analyser runs and still finds the ordering supported; it makes no new
+        # quality claim and spends nothing.
+        run: |
+          python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report.json
 
       - name: Run Skills Evals Benchmark Suite
         run: |

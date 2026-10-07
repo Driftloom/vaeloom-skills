@@ -5,11 +5,18 @@ say whether a skill document, followed by a competent model, produces a good
 resume bullet.** This layer can, and is the prerequisite for SkillOpt, which
 optimises against exactly this kind of signal.
 
-> **Status: the harness is built and tested. No live quality number exists yet.**
-> No provider credentials are configured in this repository or its CI, so every
-> run recorded here used the synthetic backend. That is stated plainly rather
-> than papered over, because a fabricated judge score would be worse than no
-> score at all.
+> **Status: measured live against `gemma4:31b` via `ollama.com/v1`.**
+> Overall **4.78/10** at 3 seeds across 2 skills. **33% of generations fabricate.**
+> The anchors are written, not calibrated against human raters, so this is a
+> first reading rather than a baseline. See the two sections below for what the
+> number does and does not support.
+>
+> A previous revision of this file stated that no provider credentials were
+> configured and that every run was synthetic. That was wrong: the keys live in
+> the API app's `.env` (`OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, `OLLAMA_MODEL`), which
+> `config.py` loads. The mistake was checking only process environment variables
+> and concluding the repository had no keys. The synthetic path remains the only
+> one CI can run, so both are documented separately.
 
 ## The two skills chosen
 
@@ -39,6 +46,90 @@ passed the task input as *both* the source text and the candidate output, so the
 judge graded the input against a rubric written about outputs and measured
 nothing. `test_prompt_scores_the_generated_candidate_not_the_input` is the
 regression guard.
+
+## What the first live run found
+
+Run once with `--seeds 1`, 4 tasks per skill, 40 calls, ~70 s:
+
+| Skill | Mean | Range |
+|---|---|---|
+| `resume-bullet-writer` | 5.44/10 | 0.0 – 10.0 |
+| `resume-quantifier` | 3.68/10 | 0.0 – 10.0 |
+
+**The fabrication veto fired on 3 of 8 tasks.** Those were correct, not false
+positives: the model wrote *"ensuring **100%** data integrity"* and *"reduced
+spend by **15-20%**"* where the source contained no metric at all. Inventing
+quantities is exactly what `resume-quantifier` exists to do, so **its own
+instructions induce its failure mode.** Any fix has to address the skill text,
+not just the judge.
+
+Two flaws in the instrument surfaced here, both from reading the output rather
+than trusting it.
+
+**The detector vetoed placeholders.** `Managed the migration of [X]TB … reducing
+latency by [X]%` scored `0.0` with `truthfulness` at 10 — punished *for marking
+the blanks correctly*. It fired on any digit, so `[10]%` would have failed the
+same way. Placeholders are now stripped before the check, which lifted
+`resume-quantifier` from 0.00 to 4.25 on the held-out split.
+
+**The `craft` criterion was not measuring craft.** Across **32 live judgements on
+8 tasks it returned a constant 0/10**, while `agency` and `impact` spanned
+`[0, 5, 10]` and `truthfulness` spanned `[0, 10]`. Worse, two of its rationales
+objected to *fabricated claims* — `truthfulness`'s job — on the same artifact
+`truthfulness` had scored 10. Rewriting the anchors to be purely about economy
+did not change the output, which rules out wording and indicates **criterion
+bleed**: the judge reasons globally about the artifact and re-emits the same
+complaint regardless of which criterion it is scoring.
+
+A constant criterion subtracts weight from every score and informs nothing, so it
+is disabled and the remaining three renormalised to sum to 1.0. It is retained in
+`layer3_tasks.json` with the evidence rather than deleted, so it can be reinstated
+alongside a mechanical implementation or a stronger judge. The harness now
+reports **any zero-variance criterion on every run**, weighted or not, so this
+failure mode cannot hide again. Re-enabling `craft` fails
+`test_craft_is_disabled_on_live_evidence`.
+
+## How much of the score is signal
+
+A single judged number is not a result, so the same 8 tasks were re-run at
+`--seeds 3` — 120 calls, 181 s. The harness flagged both skills
+*"criterion seeds disagreed; treat the mean as unreliable"*, which is why
+`evals/layer3_variance.py` exists:
+
+```
+python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report.json
+```
+
+| | 1 seed | 3 seeds | shift |
+|---|---|---|---|
+| `resume-bullet-writer` | 5.44 | 5.64 | +0.20 |
+| `resume-quantifier` | 3.68 | 3.92 | +0.25 |
+| **Overall** | **4.56** | **4.78** | **+0.22** |
+
+- **Ordering is supported, by 2.3×.** The gap is 1.72 against a largest
+  seed-to-seed swing of any skill's mean of 0.74. `resume-bullet-writer` does
+  score above `resume-quantifier` — but by a modest margin, so the ordering is
+  weak evidence, not a confident ranking.
+- **The judge is not reliable on 1 judgement in 8.** 3 of 24 criterion-task pairs
+  (12.5%) returned the full `0`–`10` range across seeds, e.g. `truthfulness`
+  `[10, 10, 0]` and `agency` `[0, 10, 0]`. Those judgements carry no information
+  and are listed in the analyser output rather than silently averaged.
+- **Fabrication is 33% per generation** (8 of 24), not the 38% task-level figure.
+  The task rule zeroes a task if *any* of its generations fabricated, which is the
+  correct rule for fabrication but the wrong thing to quote as a rate.
+
+The denominator matters more than it looks. The first analysis compared the
+between-skill gap against per-task criterion spread (0–10) and concluded the
+difference was unresolvable. That was the wrong denominator — it compares a
+difference *between* skills with the spread *within* a single judgement. The
+correct comparison is gap against seed-to-seed swing of the mean, which supports
+the ordering at 2.3×. `test_gap_is_measured_against_the_swing_of_the_mean` pins
+this, with a control that produces the same gap by a different route and must be
+rejected.
+
+The analyser also had an inverted guard: it reported an ordering as *unsupported*
+when seed swing was zero, treating perfect repeatability as absence of evidence.
+Restoring that bug fails 3 tests.
 
 ## Four design choices, each avoiding a dishonesty
 
@@ -114,18 +205,26 @@ this project's `ollama_base_url = https://ollama.com`.
 
 ## Cost
 
-Per task per seed: **1 generation + 1 judge call per criterion** (4 criteria), so
-5 calls. At 2 held-out tasks × 2 skills × 3 seeds that is **60 calls** per run.
-`--seeds 1` cuts it to 20. One dry run should be measured before any sweep —
-see [`skillopt-decision.md`](skillopt-decision.md).
+Per task per seed: **1 generation + 1 judge call per enabled criterion**, so
+4 calls with `craft` disabled. Measured, not estimated: `--split all --seeds 1`
+(8 tasks) took **70 s**, and `--split all --seeds 3` (**120 calls**) took **181 s**.
+`--split held_out --seeds 3` is 60 calls. One dry run should be measured before
+any sweep — see [`skillopt-decision.md`](skillopt-decision.md).
 
 ## What this does not establish
 
 - **It is not calibrated against human judgement.** The anchors are written, not
-  validated against expert raters. Until someone compares judge output to human
-  scores on the same tasks, the numbers are internally consistent and externally
-  unverified.
-- **Two skills is a pilot, not a gate.** 25 prose-only skills remain unevaluated.
+  validated against expert raters. This is the largest remaining gap: the judge
+  disagrees with itself on 12.5% of criterion-task pairs, and nobody has checked
+  whether it agrees with a person on the rest.
+- **Two skills is a pilot, not a gate.** 25 prose-only skills remain unevaluated,
+  and the 8 with helper scripts are covered only by Layer 2.
+- **Eight tasks is a small sample.** The ordering of the two skills survives the
+  noise by 2.3×, which is real but thin. Per-criterion figures come from as few
+  as 8 observations.
 - **It does not verify the skill document is *followed*.** It measures what
   following the document produces. A skill with excellent prose and a weak
   playbook would score well and still be a problem.
+- **The fabrication rate is measured on 8 tasks.** 33% is precise enough to act
+  on — the failure is unambiguous — but not precise enough to publish as a
+  headline metric.
