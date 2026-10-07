@@ -19,6 +19,9 @@ sys.path.insert(0, str(REPO_ROOT / "skills" / "star-interview-prep" / "scripts")
 sys.path.insert(0, str(REPO_ROOT / "skills" / "linkedin-profile-optimizer" / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "skills" / "linkedin-humanizer" / "scripts"))
 
+sys.path.insert(0, str(REPO_ROOT / "skills" / "job-discovery-radar" / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "skills" / "linkedin-interviewer" / "scripts"))
+
 from ats_checker import check_ats_compliance
 from xyz_scorer import score_bullet
 from comp_calculator import calculate_total_comp
@@ -26,6 +29,8 @@ from star_validator import audit_star_story
 from headline_lint import lint_headline
 from humanize import pass_lexical, load_lexicon
 from lib.url_parser import parse_linkedin_url
+from portal_scanner import is_ssrf_safe, analyze_career_url
+from story_bank_validator import validate_story_bank
 
 
 # Assertion types each skill's evaluation engine actually implements.
@@ -58,6 +63,12 @@ HANDLED_ASSERTIONS: dict[str, frozenset[str]] = {
     }),
     "linkedin-humanizer": frozenset({
         "slop_scrubbed", "facts_preserved",
+    }),
+    "job-discovery-radar": frozenset({
+        "ssrf_blocked", "ssrf_allowed", "career_url_verified", "career_url_rejected",
+    }),
+    "linkedin-interviewer": frozenset({
+        "story_bank_valid", "story_bank_score_above", "story_bank_missing_sections",
     }),
 }
 
@@ -259,6 +270,65 @@ def run_evals() -> int:
                             if fact not in cleaned:
                                 case_passed = False
                                 failure_reasons.append(f"Required fact '{fact}' dropped from cleaned text: '{cleaned}'")
+
+            elif skill == "linkedin-interviewer":
+                res = validate_story_bank(case["input"])
+                for a in case["assertions"]:
+                    if a["type"] == "story_bank_valid":
+                        if res["valid"] != a["expected"]:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"Expected valid={a['expected']}, got {res['valid']} "
+                                f"(missing sections: {res['missing_sections']})"
+                            )
+                    elif a["type"] == "story_bank_score_above":
+                        if res["score"] < a["threshold"]:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"Expected story bank score > {a['threshold']}, got {res['score']}"
+                            )
+                    elif a["type"] == "story_bank_missing_sections":
+                        if not res["missing_sections"]:
+                            case_passed = False
+                            failure_reasons.append(
+                                "Expected missing_sections to be reported, got none"
+                            )
+
+            elif skill == "job-discovery-radar":
+                for a in case["assertions"]:
+                    if a["type"] in ("ssrf_allowed", "ssrf_blocked"):
+                        host = a["host"]
+                        allowed, reason = is_ssrf_safe(host)
+                        if a["type"] == "ssrf_allowed" and not allowed:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"Host '{host}' should be allowed but was blocked: {reason}"
+                            )
+                        if a["type"] == "ssrf_blocked" and allowed:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"SSRF: host '{host}' was ALLOWED but must be blocked "
+                                f"(loopback, link-local and cloud metadata targets)"
+                            )
+                        if a["type"] == "ssrf_blocked" and not reason:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"Blocked host '{host}' gave no reason; a denial must be explainable"
+                            )
+                    elif a["type"] in ("career_url_verified", "career_url_rejected"):
+                        res = analyze_career_url(case["input"])
+                        rejected = res.get("status") == "REJECTED"
+                        if a["type"] == "career_url_rejected" and not rejected:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"URL {case['input']!r} should be REJECTED, got {res.get('status')}"
+                            )
+                        if a["type"] == "career_url_verified" and rejected:
+                            case_passed = False
+                            failure_reasons.append(
+                                f"URL {case['input']!r} should verify, got {res.get('status')}: "
+                                f"{res.get('error')}"
+                            )
 
             if case_passed:
                 print(f"[PASS] {case_id}: {name}")

@@ -229,7 +229,11 @@ def test_negative_controls_really_assert_absence(cases) -> None:
             if kind == "no_rule_violation":
                 # Nothing raised.
                 absence = True
-            elif kind in {"missing_metric_detected", "we_trap_detected", "headline_valid"}:
+            elif kind == "ssrf_blocked":
+                # A denial is the absence of permission: the negative direction.
+                absence = True
+            elif kind in {"missing_metric_detected", "we_trap_detected", "headline_valid",
+                          "story_bank_valid"}:
                 if a.get("expected") is False:
                     absence = True
             elif kind == "slop_scrubbed":
@@ -240,7 +244,9 @@ def test_negative_controls_really_assert_absence(cases) -> None:
                     absence = True
             elif kind in {"facts_preserved", "parsed_url_type", "parsed_activity_id",
                            "expected_year_1_tc", "expected_steady_state_tc",
-                           "status_not_equals", "score_above", "score_below"}:
+                           "status_not_equals", "score_above", "score_below",
+                           "ssrf_allowed", "career_url_verified", "career_url_rejected",
+                           "story_bank_missing_sections", "story_bank_score_above"}:
                 continue
 
         assert absence, (

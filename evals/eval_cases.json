@@ -327,5 +327,92 @@
         ]
       }
     ]
+  },
+  {
+    "id": "eval-radar-ssrf-001",
+    "name": "SSRF NEGATIVE CONTROL: loopback, link-local and metadata hosts must be blocked",
+    "skill": "job-discovery-radar",
+    "input_type": "hostname",
+    "input": "169.254.169.254",
+    "assertions": [
+      {
+        "type": "ssrf_blocked",
+        "host": "127.0.0.1"
+      },
+      {
+        "type": "ssrf_blocked",
+        "host": "localhost"
+      },
+      {
+        "type": "ssrf_blocked",
+        "host": "169.254.169.254"
+      },
+      {
+        "type": "ssrf_blocked",
+        "host": "metadata.google.internal"
+      }
+    ]
+  },
+  {
+    "id": "eval-radar-ssrf-002",
+    "name": "SSRF public host must be allowed",
+    "skill": "job-discovery-radar",
+    "input_type": "hostname",
+    "input": "www.linkedin.com",
+    "assertions": [
+      {
+        "type": "ssrf_allowed",
+        "host": "www.linkedin.com"
+      },
+      {
+        "type": "ssrf_allowed",
+        "host": "linkedin.com"
+      }
+    ]
+  },
+  {
+    "id": "eval-radar-url-001",
+    "name": "Career URL classified as a verified safe portal",
+    "skill": "job-discovery-radar",
+    "input_type": "career_url",
+    "input": "https://www.linkedin.com/in/jane-doe",
+    "assertions": [
+      {
+        "type": "career_url_verified"
+      }
+    ]
+  },
+  {
+    "id": "eval-interviewer-001",
+    "name": "Complete Story Bank validates clean",
+    "skill": "linkedin-interviewer",
+    "input_type": "story_bank",
+    "input": "## Roles & Scopes\nStaff Engineer, Acme Corp (2021-Present)\n\n## Receipts\nCut p99 latency 45% across 14 services. Reduced spend by 120k per year. Shipped 3 migrations.\n\n## Turning Points\nMy first migration failed and I learned to stage rollouts one service at a time.\n\n## Defended Positions\nI argued against the rewrite because 14 services is too many for one change.\n",
+    "assertions": [
+      {
+        "type": "story_bank_valid",
+        "expected": true
+      },
+      {
+        "type": "story_bank_score_above",
+        "threshold": 90
+      }
+    ]
+  },
+  {
+    "id": "eval-interviewer-002",
+    "name": "Story Bank NEGATIVE CONTROL: missing sections must be reported",
+    "skill": "linkedin-interviewer",
+    "input_type": "story_bank",
+    "input": "I did various things at my job for a while.",
+    "assertions": [
+      {
+        "type": "story_bank_valid",
+        "expected": false
+      },
+      {
+        "type": "story_bank_missing_sections"
+      }
+    ]
   }
 ]

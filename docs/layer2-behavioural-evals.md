@@ -6,30 +6,30 @@ than what its file looks like.
 
 ## Current coverage
 
-**17 cases across 7 of 33 skills.** Every case is behavioural: it feeds input to
-a helper and asserts on the result.
+**22 cases across 8 of 33 skills. Every skill that ships an executable helper is
+now covered** — `test_report_uncovered_scripted_skills` prints an empty list.
+Every case is behavioural: it feeds input to a helper and asserts on the result.
 
-| Skill | Cases | Includes a negative control |
+| Skill | Cases | Negative control |
 |---|---|---|
-| `ats-audit` | 5 | yes — compliant resume must pass clean |
-| `resume-optimization` | 3 | degenerate-input (empty bullet) |
-| `star-interview-prep` | 2 | yes — individual agency must not trip the we-trap |
+| `ats-audit` | 5 | compliant resume must pass clean |
+| `job-discovery-radar` | 3 | **loopback / link-local / cloud-metadata hosts must be blocked** |
+| `linkedin-profile-optimizer` | 3 | over-budget headline must be rejected |
+| `resume-optimization` | 3 | degenerate input (empty bullet) |
+| `linkedin-humanizer` | 2 | clean prose must pass through untouched |
+| `star-interview-prep` | 2 | individual agency must not trip the we-trap |
 | `salary-negotiation-playbook` | 2 | zero-bonus boundary |
-| `linkedin-profile-optimizer` | 3 | yes — over-budget headline must be rejected |
-| `linkedin-humanizer` | 2 | yes — clean prose must pass through untouched |
-| **`job-discovery-radar`** | **0** | — |
-| **`linkedin-interviewer`** | **0** | — |
-| 26 further skills | 0 | — |
+| `linkedin-interviewer` | 2 | missing sections must be reported |
+| 25 further skills | 0 | — |
 
-**The two bolded skills ship executable helpers and have no behavioural case.**
-That is a real hole, surfaced by
-`test_eval_suite_integrity.py::test_report_uncovered_scripted_skills` rather than
-hidden. It is reported, not failed, because failing it would force either writing
-rollouts for two more skills or deleting their helpers, and both are worse than
-naming the gap.
+**Six negative controls.** The SSRF one is a genuine security control:
+`eval-radar-ssrf-001` asserts that `127.0.0.1`, `localhost`, `169.254.169.254`
+and `metadata.google.internal` are all denied, and that a denial carries an
+explainable reason. Verified load-bearing — flipping `is_ssrf_safe` to return
+`True` on a non-public IP takes the suite to 21/22 and names the case.
 
-Skills with no helper script cannot be covered here at all without an LLM judge.
-That is 25 of 33, and it is the reason Layer 3 exists.
+The remaining 25 skills have no helper script and cannot be covered without an
+LLM judge. That is what Layer 3 is for.
 
 ## Three defects found in this suite
 
