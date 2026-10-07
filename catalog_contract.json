@@ -1,0 +1,72 @@
+{
+  "$comment": [
+    "Declared two-tier contract between this repo and the Vaeloom skill catalog.",
+    "check_catalog_fidelity.py compares reality against this file and FAILS on any",
+    "difference. Without it the check could only ever be red, because the two sets",
+    "are intentionally not identical.",
+    "",
+    "Two tiers exist because skill_injection drops whole skills rather than",
+    "truncating them, so a directive that does not fit SKILL_DIRECTIVE_TOKEN_BUDGET",
+    "is silently excluded from the run. This repo holds the full reference; the app",
+    "holds a condensed directive sized to fit."
+  ],
+  "catalog_only": {
+    "$comment": "App-native skills with no source in this repo. Engineering/process skills that belong to the platform, not to the career catalog. Declared so an accidental addition is caught.",
+    "skills": [
+      "acceptance-criteria-review",
+      "accessibility-testing",
+      "agent-building",
+      "agentic-workflows",
+      "autoplan",
+      "check-work",
+      "deep-learning-rag-evals",
+      "frontend-design",
+      "llm-engineering",
+      "system-design",
+      "ui-ux-pro-max"
+    ]
+  },
+  "repo_only": {
+    "$comment": "Career skills in this repo that the app catalog does not serve. Measured: none of these can ever reach an agent, because the catalog is the only thing skill_injection reads. Listed so the gap is explicit rather than invisible.",
+    "skills": [
+      "cover-letter-generator",
+      "interview-prep-generator",
+      "resume-ats-optimizer",
+      "resume-bullet-writer",
+      "resume-formatter",
+      "resume-quantifier",
+      "resume-section-builder",
+      "resume-tailor",
+      "resume-version-manager",
+      "salary-negotiation-prep",
+      "tech-resume-optimizer"
+    ]
+  },
+  "condensed_only_triggers": {
+    "$comment": "Trigger phrases the condensed directive declares that the full reference does not. Permitted: the condensed tier may be given extra activation phrases. The reverse direction is NOT permitted and is checked as a failure, because a dropped trigger means a real request activates nothing.",
+    "skills": [
+      "ats-resume-builder",
+      "ats-audit",
+      "cover-letter-architect",
+      "salary-negotiation-playbook",
+      "star-interview-prep",
+      "linkedin-profile-optimizer",
+      "linkedin-interviewer",
+      "linkedin-humanizer",
+      "linkedin-post-writer",
+      "academic-cv-builder",
+      "application-form-filler",
+      "career-changer-translator",
+      "cold-email-writer",
+      "creative-portfolio-resume",
+      "executive-resume-writer",
+      "job-description-analyzer",
+      "job-discovery-radar",
+      "offer-comparison-analyzer",
+      "portfolio-case-study-writer",
+      "reference-list-builder",
+      "resume-optimization",
+      "career-coaching"
+    ]
+  }
+}
