@@ -5,9 +5,9 @@
 - **Layer 1 — this document.** A deterministic 100-point rubric, no model call.
   The reproducible score.
 - **Layer 2 —** `evals/run_evals.py`. Behavioural pass/fail. Hard sub-gate.
-  **17 cases across 7 of 33 skills**, including 4 negative controls. Two skills
-  that ship executable helpers still have **no** behavioural case:
-  `job-discovery-radar` and `linkedin-interviewer`.
+  **22 cases across 8 of 33 skills**, with 6 negative controls. Every skill that
+  ships an executable helper is now covered; the 25 prose-only skills need an LLM
+  judge to evaluate at all.
 - **Layer 3 —** SkillOpt held-out accuracy. A ceiling measurement, never a gate.
   Blocked — see [`skillopt-decision.md`](skillopt-decision.md).
 
