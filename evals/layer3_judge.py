@@ -69,6 +69,11 @@ PASSIVE_MARKERS = (
     "participated", "contributed to", "was tasked", "duties included",
 )
 
+# Bracketed blanks the candidate is meant to fill in: [X], [X]%, $[Y]K, [10x].
+# These are the rubric's preferred way to express an unknowable quantity, so they
+# must not read as fabricated figures.
+PLACEHOLDER_RE = re.compile(r"\[[^\]]*\]|\{[^}]*\}|<[^>]*>")
+
 # Word-boundary variants. Matching a bare substring misses every morphological
 # form, so "leveraged" would not catch "leveraging" and "synergy" would not catch
 # "synergies" -- which is precisely the vocabulary a model actually reaches for.
@@ -115,7 +120,15 @@ def mechanical_evidence(text: str, expectations: dict) -> dict:
     # (This was previously inverted, which flagged truthful restatements as
     # fabrication and passed real fabrication -- the worst possible failure for
     # the highest-severity check in the domain.)
-    invented = has_number and bool(expectations.get("source_has_no_metric", False))
+    #
+    # Placeholders are exempt. "[X]%", "[X]TB" and "$[Y]K" contain no digits so
+    # they never reached here, but "[10]%" or a stray year would, and vetoing a
+    # candidate for marking a blank would punish exactly the behaviour the
+    # rubric's truthfulness anchor rewards.
+    _stripped = PLACEHOLDER_RE.sub("", text)
+    invented = bool(re.search(r"\d", _stripped)) and bool(
+        expectations.get("source_has_no_metric", False)
+    )
     return {
         "words": words,
         "within_budget": words <= int(expectations.get("max_words", 60)),
@@ -303,6 +316,29 @@ def read_skill_doc(skill: str) -> str:
     return parts[2].strip() if len(parts) >= 3 else path.read_text(encoding="utf-8")
 
 
+def active_criteria(rubric: dict) -> list[dict]:
+    """Criteria that carry weight. Disabled ones are still judged and reported."""
+    return [c for c in rubric["criteria"] if c.get("enabled", True) and c["weight"] > 0]
+
+
+def non_discriminating(results: list[dict]) -> dict[str, set]:
+    """Criteria whose scores never varied across every task judged.
+
+    A constant criterion cannot inform a mean -- it subtracts its weight from
+    every score and contributes nothing. This exists because ``craft`` returned
+    0/10 on all 8 live tasks while the other three spanned 0-10, and 2 of its
+    rationales complained about fabrication, which is the truthfulness
+    criterion's job. That is criterion bleed, and it was only caught by reading
+    the output. The harness now reports it on every run.
+    """
+    seen: dict[str, set] = {}
+    for result in results:
+        for task in result["tasks"]:
+            for key, crit in task["criteria"].items():
+                seen.setdefault(key, set()).update(crit["samples"])
+    return {k: v for k, v in seen.items() if len(v) == 1 and len(results) >= 1} if results else {}
+
+
 def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, seeds: int) -> dict:
     tasks = [t for t in spec["tasks"] if split == "all" or t["split"] == split]
     skill_doc = read_skill_doc(skill)
@@ -349,7 +385,14 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
                 "rationale": samples[0].get("rationale", ""),
             }
 
-        total = round(sum(c["mean"] * c["weight"] for c in criteria_scores.values()), 2)
+        total = round(
+            sum(
+                c["mean"] * c["weight"]
+                for c in criteria_scores.values()
+                if c["weight"] > 0
+            ),
+            2,
+        )
         if fabrication:
             # A fabrication veto cannot be outvoted by a confident judge.
             total = 0.0
@@ -439,7 +482,21 @@ def main() -> int:
             print(f"  {t['id']:<20} score={t['score']:<6}{flag}{unstable}")
             for key, c in t["criteria"].items():
                 mark = "!" if c["unstable"] else " "
-                print(f"    {mark}{key:<14}{c['mean']:>5}/10  samples={c['samples']} sd={c['stdev']}")
+                weight = f"w={c['weight']:<6}" if c["weight"] > 0 else "DISABLED "
+                print(f"    {mark}{key:<14}{c['mean']:>5}/10  {weight}samples={c['samples']} sd={c['stdev']}")
+
+    # Surfaced automatically so a criterion that has stopped measuring anything
+    # is reported rather than quietly subtracted from every score.
+    flat = non_discriminating(results)
+    if flat:
+        print("\nNON-DISCRIMINATING CRITERIA (constant across every task judged):")
+        for key, values in sorted(flat.items()):
+            weighted = any(
+                c["key"] == key and c["weight"] > 0 for c in spec["rubric"]["criteria"]
+            )
+            state = "STILL WEIGHTED - its score is meaningless" if weighted else "already disabled (excluded from the mean)"
+            print(f"  {key:<14} returned only {sorted(values)} across "
+                  f"{sum(len(r['tasks']) for r in results)} task(s) -- {state}")
 
     print("\n" + "-" * 76)
     if backend.synthetic:

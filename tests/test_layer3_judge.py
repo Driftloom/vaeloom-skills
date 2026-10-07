@@ -128,6 +128,65 @@ def test_rubric_weights_sum_to_one(spec) -> None:
     assert abs(total - 1.0) < 1e-9, total
 
 
+def test_disabled_criteria_carry_no_weight(spec) -> None:
+    """A criterion excluded from the mean must not also be excluded from the
+    accounting -- the remaining weights have to renormalise to 1.0, not sum to
+    whatever is left over."""
+    for criterion in spec["rubric"]["criteria"]:
+        if not criterion.get("enabled", True):
+            assert criterion["weight"] == 0.0, criterion["key"]
+
+
+def test_active_criteria_excludes_disabled(spec) -> None:
+    active = layer3.active_criteria(spec["rubric"])
+    keys = {c["key"] for c in active}
+    disabled = {c["key"] for c in spec["rubric"]["criteria"] if not c.get("enabled", True)}
+    assert not (keys & disabled), f"disabled criteria still active: {keys & disabled}"
+    assert abs(sum(c["weight"] for c in active) - 1.0) < 1e-6
+
+
+def test_craft_is_disabled_on_live_evidence(spec) -> None:
+    """Pinned so it cannot be silently re-enabled and re-flattened.
+
+    craft returned a constant 0/10 across 32 live judgements on 8 tasks, with
+    rationales complaining about fabrication -- the truthfulness criterion's job.
+    A constant criterion subtracts its weight from every score and informs
+    nothing.
+    """
+    craft = [c for c in spec["rubric"]["criteria"] if c["key"] == "craft"][0]
+    assert craft["enabled"] is False
+    assert craft["weight"] == 0.0
+    note = " ".join(craft["$note"]).lower()
+    assert "zero variance" in note or "constant" in note
+    assert "bleed" in note, "the reason for disabling must record the actual cause"
+
+
+def test_non_discriminating_criteria_are_detected() -> None:
+    """The harness must surface a criterion that has stopped measuring anything.
+
+    Added because craft's flatness was only caught by reading the output. The
+    failure mode should be reported, not noticed.
+    """
+    def result(name, samples):
+        return {
+            "skill": name, "tasks": [
+                {"id": "t", "criteria": {"flat": {"samples": samples, "mean": samples[0]},
+                                          "real": {"samples": samples, "mean": samples[0]}}}
+            ],
+        }
+
+    flat = layer3.non_discriminating([result("a", [0, 0, 0]), result("b", [0, 0])])
+    assert "flat" in flat, flat
+    assert flat["flat"] == {0}
+
+    varied = layer3.non_discriminating([result("a", [0, 5, 10]), result("b", [5, 0])])
+    assert varied == {}, f"nothing constant here, got {varied}"
+
+
+def test_non_discriminating_returns_nothing_for_an_empty_run() -> None:
+    assert layer3.non_discriminating([]) == {}
+
+
 def test_truthfulness_carries_the_heaviest_weight(spec) -> None:
     """Fabrication is the most damaging failure in this domain."""
     weights = {c["key"]: c["weight"] for c in spec["rubric"]["criteria"]}
