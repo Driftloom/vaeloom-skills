@@ -39,6 +39,19 @@ jobs:
         run: |
           pytest tests/test_catalog_contract.py -v
 
+      - name: Run Skill Scorecard Tests
+        run: |
+          pytest tests/test_score_skills.py -v
+
       - name: Run Skills Evals Benchmark Suite
         run: |
           python evals/run_evals.py
+
+      - name: Verify the skill scorecard floor has not regressed
+        # Ratchet, not aspiration. The measured floor is 45.0; the weakest skill
+        # currently scores 45.4 and the mean is 58.1. This step forbids the
+        # catalogue from getting worse. Raising it is a deliberate act, paired
+        # with an actual improvement to a skill -- see
+        # docs/skill-scorecard.md.
+        run: |
+          python scripts/score_skills.py --min-score 45.0 --quiet

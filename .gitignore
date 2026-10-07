@@ -11,3 +11,7 @@ build/
 *.egg-info/
 .DS_Store
 Thumbs.db
+
+# Transient scorecard from scripts/score_skills.py; the committed baseline
+# lives at docs/skill-scorecard-baseline.json.
+scorecard.json
