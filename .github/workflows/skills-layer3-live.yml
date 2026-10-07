@@ -1,0 +1,116 @@
+name: Skills - Layer 3 Live Judging
+
+# Manual only, and deliberately so.
+#
+# Layer 3 costs real money: 5 model calls per task per seed (1 generation +
+# 4 rubric criteria), so a full held-out run over the two pilot skills is ~20
+# calls at --seeds 1 and ~60 at --seeds 3. That is not something a push should
+# trigger.
+#
+# The synthetic backend already runs on every push via ci.yml. This workflow
+# exists so a *real* number can be produced on demand, reproducibly, by anyone
+# with the secret -- rather than by one person running it locally where the
+# result is not recorded anywhere.
+#
+# The harness refuses to run without credentials and refuses to fall back to the
+# synthetic backend, so this job either produces a live report or fails loudly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: Judge backend
+        type: choice
+        options:
+          - openai_compatible
+          - stub
+        default: openai_compatible
+      split:
+        description: Task split
+        type: choice
+        options:
+          - held_out
+          - train
+          - all
+        default: held_out
+      seeds:
+        description: Seeds per task (calls = 5 x tasks x seeds)
+        type: choice
+        options:
+          - "1"
+          - "3"
+          - "5"
+        default: "1"
+      min_score:
+        description: "Fail below this mean score /10 (blank = report only)"
+        type: string
+        default: ""
+      commit_report:
+        description: "Commit the report to master (off = upload artifact only)"
+        type: boolean
+        default: false
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml pytest
+
+      - name: Harness self-check (synthetic, free)
+        # Proves the harness works before spending anything.
+        run: |
+          python evals/layer3_judge.py --backend stub --split held_out --seeds 1
+
+      - name: Live judging
+        if: ${{ inputs.backend == 'openai_compatible' }}
+        env:
+          OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.OPENAI_COMPATIBLE_BASE_URL }}
+          OPENAI_COMPATIBLE_API_KEY: ${{ secrets.OPENAI_COMPATIBLE_API_KEY }}
+          OPENAI_COMPATIBLE_MODEL: ${{ secrets.OPENAI_COMPATIBLE_MODEL }}
+        run: |
+          if [ -z "$OPENAI_COMPATIBLE_API_KEY" ]; then
+            echo "::error::OPENAI_COMPATIBLE_API_KEY secret is not set."
+            echo "The harness will not fall back to the synthetic backend, because"
+            echo "a degraded backend produces a fabricated quality score."
+            exit 1
+          fi
+          ARGS="--backend openai_compatible --split ${{ inputs.split }} --seeds ${{ inputs.seeds }} --json layer3-report.json"
+          if [ -n "${{ inputs.min_score }}" ]; then
+            ARGS="$ARGS --min-score ${{ inputs.min_score }}"
+          fi
+          python evals/layer3_judge.py $ARGS
+          echo "--- synthetic flag in the report ---"
+          python -c "import json;print('synthetic =', json.load(open('layer3-report.json'))['synthetic'])"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: layer3-report
+          path: layer3-report.json
+          if-no-files-found: ignore
+
+      - name: Commit the report
+        if: ${{ inputs.backend == 'openai_compatible' && inputs.commit_report }}
+        # Opt-in only. A live quality number is a measurement artefact: it should
+        # land under review rather than silently, and it never force-pushes.
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add layer3-report.json
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "chore(skills): record a Layer 3 live judging report"
+            git push origin HEAD:master
+          fi
