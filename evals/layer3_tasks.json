@@ -1,0 +1,161 @@
+{
+  "$comment": [
+    "Layer 3 task set. Prose-only skills, chosen because they have no helper",
+    "script and therefore no Layer 2 coverage, yet their outputs have a crisp,",
+    "checkable shape.",
+    "",
+    "Splits are deterministic and disjoint. 'held_out' is the only split a",
+    "quality claim may be based on; 'train' exists so a future SkillOpt run has",
+    "something to optimise against without touching the reporting set.",
+    "",
+    "Every task carries mechanical_expectations: facts a deterministic checker can",
+    "verify before any model is consulted. The judge is shown this evidence and",
+    "is asked only about what it alone can judge, which grounds the score and cuts",
+    "the number of paid calls."
+  ],
+  "skills": {
+    "resume-bullet-writer": {
+      "why_this_skill": "Prose-only. Output is one bullet, so the rubric can be specific rather than impressionistic.",
+      "tasks": [
+        {
+          "id": "rbw-train-01",
+          "split": "train",
+          "input": "Responsible for the internal analytics dashboard used by the sales team.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Does the rewritten bullet read as an achievement with an agent, rather than a duty? Does it avoid inventing a number the source does not contain?"
+        },
+        {
+          "id": "rbw-train-02",
+          "split": "train",
+          "input": "Helped maintain the customer onboarding flow.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Is the agent explicit rather than implied by 'helped'? Does it stay truthful while still being concrete?"
+        },
+        {
+          "id": "rbw-held-01",
+          "split": "held_out",
+          "input": "Worked on reducing page load time for the marketing site.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Does the bullet name an action and an outcome shape without asserting a specific improvement the source never gave? Is it free of filler openers?"
+        },
+        {
+          "id": "rbw-held-02",
+          "split": "held_out",
+          "input": "Built an internal tool that automated the weekly reporting process.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": false,
+            "max_words": 40
+          },
+          "judge_question": "Is the achievement legible in one line? Does it avoid padding adjectives that carry no information?"
+        }
+      ]
+    },
+    "resume-quantifier": {
+      "why_this_skill": "Prose-only. Its entire purpose is converting unquantified text into quantified text, which makes fabrication the single highest-severity failure mode.",
+      "tasks": [
+        {
+          "id": "rq-train-01",
+          "split": "train",
+          "input": "Managed a team responsible for the payments platform.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Does the output make the scale concrete without inventing a headcount or a percentage the source never stated?"
+        },
+        {
+          "id": "rq-train-02",
+          "split": "train",
+          "input": "Improved the release process for the mobile team.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Is quantification expressed as a range or a to-be-filled marker rather than a fabricated figure?"
+        },
+        {
+          "id": "rq-held-01",
+          "split": "held_out",
+          "input": "Oversaw data migration from the legacy warehouse to the new platform.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Does it avoid asserting a data volume, and instead ask for or mark the figure? Is the underlying action still preserved?"
+        },
+        {
+          "id": "rq-held-02",
+          "split": "held_out",
+          "input": "Reduced infrastructure spend for the streaming service.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": true,
+            "max_words": 40
+          },
+          "judge_question": "Is the saving expressed without a fabricated currency amount? Does the bullet remain a claim rather than a request?"
+        }
+      ]
+    }
+  },
+  "rubric": {
+    "$comment": "Anchored at 0, 5 and 10 so the judge is not free-floating. Every criterion names observable properties, not vibes.",
+    "criteria": [
+      {
+        "key": "truthfulness",
+        "label": "Truthfulness",
+        "weight": 0.40,
+        "anchors": {
+          "0": "Asserts a specific figure, employer, or outcome the source never provided. This is the single most severe failure.",
+          "5": "No fabrication, but quantification is vague to the point of adding nothing ('improved performance significantly').",
+          "10": "Every claim traces to the source. Unknowable quantities are marked for the candidate to fill in rather than invented."
+        }
+      },
+      {
+        "key": "agency",
+        "label": "Explicit agency",
+        "weight": 0.25,
+        "anchors": {
+          "0": "Passive or team-deflecting ('responsible for', 'helped with', 'we').",
+          "5": "Agency is implied but not stated; a reader could not tell who did the work.",
+          "10": "The actor and the action are unambiguous in the first clause."
+        }
+      },
+      {
+        "key": "impact",
+        "label": "Impact legibility",
+        "weight": 0.20,
+        "anchors": {
+          "0": "No discernible outcome; describes a task only.",
+          "5": "An outcome is gestured at but not specified.",
+          "10": "The reader can tell what changed, or exactly which quantity is needed."
+        }
+      },
+      {
+        "key": "craft",
+        "label": "Craft and economy",
+        "weight": 0.15,
+        "anchors": {
+          "0": "Filler, jargon padding, or over the word budget.",
+          "5": "Readable but padded; trimmable without loss.",
+          "10": "Dense, specific, within budget, no wasted clause."
+        }
+      }
+    ]
+  }
+}

@@ -47,6 +47,18 @@ jobs:
         run: |
           pytest tests/test_eval_suite_integrity.py -v
 
+      - name: Run Layer 3 Judging Harness Tests
+        run: |
+          pytest tests/test_layer3_judge.py -v
+
+      - name: Verify the Layer 3 harness executes end to end (synthetic)
+        # Proves the generation -> evidence -> judge -> aggregate path runs.
+        # The stub backend is deterministic and free, and its output is labelled
+        # SYNTHETIC; this step verifies plumbing and makes no quality claim.
+        # Live judging needs credentials and is run separately.
+        run: |
+          python evals/layer3_judge.py --backend stub --split held_out --seeds 3
+
       - name: Run Skills Evals Benchmark Suite
         run: |
           python evals/run_evals.py
