@@ -78,15 +78,46 @@ def analyse(report: dict) -> dict:
 
     gens = 0
     fab_gens = 0
+    inferred = 0
     vetoed = 0
     tasks = 0
+    # Split by whether the mechanical veto fired. A veto pins a task to 0
+    # regardless of how it scored, so a single mean conflates "writes badly"
+    # with "invents figures". Those need different fixes, so both are reported.
+    unvetoed_means: dict[str, float] = {}
+    unvetoed_counts: dict[str, int] = {}
+    fabrication_gap: dict[str, float] = {}
     for r in report["results"]:
+        # Prefer the recorded task score; older or minimal fixtures may only
+        # carry the weighted criteria, so fall back to those rather than
+        # requiring a field every report shape has to have.
+        def task_score(t):
+            if "score" in t:
+                return t["score"]
+            return sum(
+                c["mean"] * c["weight"] for c in t["criteria"].values() if c["weight"] > 0
+            )
+
+        clean = [task_score(t) for t in r["tasks"] if not t["fabrication_vetoed"]]
+        unvetoed_counts[r["skill"]] = len(clean)
+        unvetoed_means[r["skill"]] = round(st.mean(clean), 2) if clean else None
+        if clean:
+            fabrication_gap[r["skill"]] = round(r["mean_score"] - st.mean(clean), 2)
         for t in r["tasks"]:
             tasks += 1
             vetoed += 1 if t["fabrication_vetoed"] else 0
-            for score in t["criteria"].get("truthfulness", {}).get("samples", []):
+            # Per-generation fabrication is the mechanical per-seed flag.
+            # It was previously inferred from a truthfulness score of 0, which
+            # silently counted "wrote untruthfully" as "invented a number" and
+            # reported 50% where the real figure was different.
+            flags = t.get("fabrication_by_seed")
+            if flags is None:
+                # Report predates the per-seed field. Say so rather than guess.
+                inferred += len(t["criteria"].get("truthfulness", {}).get("samples", []))
+                continue
+            for flag in flags.values():
                 gens += 1
-                if score == 0:
+                if flag:
                     fab_gens += 1
 
     swings = {k: (max(v) - min(v)) for k, v in per_skill.items()}
@@ -97,10 +128,26 @@ def analyse(report: dict) -> dict:
         gap = max(means.values()) - min(means.values()) if means else 0.0
     max_swing = max(swings.values()) if swings else 0.0
 
+    # On the live run the overall means said "these skills write badly" while the
+    # unvetoed means said "these skills write well and invent numbers". If the
+    # gap is material the headline mean is measuring fabrication, not prose.
+    material_gaps = {
+        k: v for k, v in fabrication_gap.items() if abs(v) >= 1.0
+    }
+    headline_is_fabrication = bool(material_gaps)
+
     return {
         "backend": report.get("backend"),
         "synthetic": report.get("synthetic"),
+        "judge_temperature": report.get("judge_temperature"),
         "seeds": seeds,
+        "unvetoed_means": unvetoed_means,
+        "unvetoed_task_counts": unvetoed_counts,
+        "overall_minus_unvetoed": fabrication_gap,
+        "material_fabrication_gaps": material_gaps,
+        # If True, quoting mean_score alone misattributes a fabrication defect
+        # to prose quality.
+        "headline_mean_misattributes_fabrication": headline_is_fabrication,
         "per_skill_seed_means": per_skill,
         "skill_means": means,
         "seed_swing": swings,
@@ -121,7 +168,10 @@ def analyse(report: dict) -> dict:
         "mean_criterion_stdev": round(st.mean(sds), 2) if sds else 0.0,
         "generations": gens,
         "fabricating_generations": fab_gens,
-        "fabrication_rate_per_generation": round(100 * fab_gens / gens, 1) if gens else 0.0,
+        "fabrication_rate_per_generation": round(100 * fab_gens / gens, 1) if gens else None,
+        # Non-zero when the report predates the per-seed field, so the rate is
+        # genuinely unavailable rather than silently approximated.
+        "fabrication_inferred_from_truthfulness": inferred,
         "tasks": tasks,
         "vetoed_tasks": vetoed,
         "veto_rate_worst_case": round(100 * vetoed / tasks, 1) if tasks else 0.0,
@@ -161,13 +211,42 @@ def render(a: dict, b: dict | None = None) -> None:
     print("  These judgements carry no information and should not be averaged.")
 
     print("\n--- fabrication ---")
-    print(f"  per generation                       : {a['fabricating_generations']}"
-          f"/{a['generations']} = {a['fabrication_rate_per_generation']}%")
+    if a["fabrication_inferred_from_truthfulness"]:
+        print("  UNMEASURABLE: this report predates the per-seed fabrication flag, so a")
+        print(f"  per-generation rate cannot be computed ({a['fabrication_inferred_from_truthfulness']}"
+              " generations lack it). Re-run the harness; the task-level figure")
+        print("  below is a worst-case rate, not a frequency.")
+    else:
+        print(f"  per generation (mechanical)           : "
+              f"{a['fabricating_generations']}/{a['generations']} = "
+              f"{a['fabrication_rate_per_generation']}%")
     print(f"  task level (worst-case veto rule)    : {a['vetoed_tasks']}"
           f"/{a['tasks']} = {a['veto_rate_worst_case']}%")
     print("  The task figure is a worst-case rate: one fabricating generation out")
     print("  of three zeroes the task. Right rule for fabrication, wrong as a")
     print("  frequency. Quote the per-generation number.")
+
+    print("\n--- writing quality vs fabrication (they are different defects) ---")
+    print(f"  {'skill':<24}{'overall':>9}{'unvetoed':>10}{'n':>4}   delta")
+    for skill in a["skill_means"]:
+        u = a["unvetoed_means"].get(skill)
+        n = a["unvetoed_task_counts"].get(skill, 0)
+        if u is None:
+            print(f"  {skill:<24}{a['skill_means'][skill]:>9.2f}{'n/a':>10}{n:>4}"
+                  f"   every task vetoed")
+            continue
+        print(f"  {skill:<24}{a['skill_means'][skill]:>9.2f}{u:>10.2f}{n:>4}"
+              f"   {a['overall_minus_unvetoed'][skill]:+.2f}")
+    print("  overall counts vetoed tasks as zeros; unvetoed drops them.")
+    if a["headline_mean_misattributes_fabrication"]:
+        print("\n  MATERIAL GAP: for "
+              + ", ".join(sorted(a["material_fabrication_gaps"]))
+              + " the overall mean understates the prose by >=1.0 point.")
+        print("  These skills do not write badly; they invent figures. Quoting the")
+        print("  headline mean would point the fix at the wrong defect.")
+    else:
+        print("\n  No material gap: overall and unvetoed agree, so the headline mean")
+        print("  is not being driven by the veto.")
 
     if b:
         print("\n--- sample-size sensitivity ---")

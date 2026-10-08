@@ -1,6 +1,13 @@
 {
   "synthetic": false,
   "backend": "openai_compatible",
+  "judge_temperature": 0.0,
+  "fabrication": {
+    "vetoed_tasks": 3,
+    "total_tasks": 8,
+    "rate_pct": 37.5,
+    "primary_metric": true
+  },
   "results": [
     {
       "skill": "resume-bullet-writer",
@@ -25,6 +32,11 @@
             "contains_number": false,
             "fabrication_risk": false
           },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": false,
+            "2": false
+          },
           "criteria": {
             "truthfulness": {
               "weight": 0.4706,
@@ -37,7 +49,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate avoided inventing figures by using placeholders [X] and [Z] for unknowable quantities, ensuring every claim traces back to the source."
+              "rationale": "The candidate avoided inventing figures by using placeholders [X] and [Z] for unknowable quantities, ensuring every claim traces to the source."
             },
             "agency": {
               "weight": 0.2941,
@@ -63,7 +75,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output uses placeholders [X] and [Z] rather than specifying a change or quantity, effectively describing a task template."
+              "rationale": "The output describes a task with placeholders rather than a discernible outcome or specific quantity."
             },
             "craft": {
               "weight": 0.0,
@@ -76,7 +88,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate included placeholder brackets and invented metrics/actions not present in the source text, constituting filler and fabrication."
+              "rationale": "The candidate fabricated specific achievements and metrics not present in the source text."
             }
           },
           "score": 7.65,
@@ -87,31 +99,36 @@
           "id": "rbw-train-02",
           "split": "train",
           "candidates": {
-            "0": "Optimized customer onboarding flow, increasing completion rates by [X]% by streamlining [Z] specific steps in the user journey.",
-            "1": "Optimized customer onboarding flow, increasing completion rates by [X]% by streamlining [Z] specific steps in the user journey.",
+            "0": "Optimized customer onboarding flow, increasing completion rates by 15% (from 70% to 85%) by streamlining the registration sequence and reducing friction points.",
+            "1": "Optimized customer onboarding flow, increasing completion rates by 15% (from 70% to 85%) by streamlining the registration process and reducing friction points.",
             "2": "Optimized customer onboarding flow, increasing completion rates by 15% (from 70% to 85%) by streamlining the registration sequence and reducing friction points."
           },
           "evidence": {
-            "words": 18,
+            "words": 22,
             "within_budget": true,
             "passive_markers": [],
             "filler_terms": [],
-            "contains_number": false,
-            "fabrication_risk": false
+            "contains_number": true,
+            "fabrication_risk": true
+          },
+          "fabrication_by_seed": {
+            "0": true,
+            "1": true,
+            "2": true
           },
           "criteria": {
             "truthfulness": {
               "weight": 0.4706,
               "samples": [
-                10,
-                10,
+                0,
+                0,
                 0
               ],
-              "mean": 6.67,
-              "stdev": 4.71,
-              "spread": 10,
-              "unstable": true,
-              "rationale": "The candidate avoided fabricating figures by using placeholders [X] and [Z] for unknowable quantities, ensuring every claim remains traceable to the source."
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate fabricated specific percentages (15%, 70%, 85%) and outcomes not present in the source text."
             },
             "agency": {
               "weight": 0.2941,
@@ -137,7 +154,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output uses placeholders ([X]%, [Z]) and fabricated actions ('Optimized', 'streamlining'), resulting in no discernible outcome."
+              "rationale": "The candidate fabricated specific metrics and outcomes not present in the source text, which only describes a task."
             },
             "craft": {
               "weight": 0.0,
@@ -150,30 +167,33 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate fabricated specific outcomes and actions ('increasing completion rates', 'streamlining steps') not present in the source text."
+              "rationale": "The candidate fabricated specific metrics and actions not present in the source text."
             }
           },
           "score": 0.0,
           "fabrication_vetoed": true,
-          "unstable_criteria": [
-            "truthfulness"
-          ]
+          "unstable_criteria": []
         },
         {
           "id": "rbw-held-01",
           "split": "held_out",
           "candidates": {
-            "0": "Accelerated marketing site page load time by [X]% (from [Y]s to [Z]s) by optimizing image assets and implementing lazy loading.",
+            "0": "Accelerated marketing site performance by reducing page load time by [X]% (from [Y]s to [Z]s) by optimizing image assets and implementing lazy loading.",
             "1": "Accelerated marketing site page load time by [X]% (from [Y]s to [Z]s) by optimizing image assets and implementing lazy loading.",
             "2": "Accelerated marketing site page load time by [X]% (from [Y]s to [Z]s) by optimizing image assets and implementing lazy loading."
           },
           "evidence": {
-            "words": 20,
+            "words": 23,
             "within_budget": true,
             "passive_markers": [],
             "filler_terms": [],
             "contains_number": false,
             "fabrication_risk": false
+          },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": false,
+            "2": false
           },
           "criteria": {
             "truthfulness": {
@@ -200,20 +220,20 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The actor is unambiguous and the action 'Accelerated' is stated clearly in the first clause."
+              "rationale": "The actor and action are unambiguous in the first clause ('Accelerated marketing site performance')."
             },
             "impact": {
               "weight": 0.2353,
               "samples": [
-                10,
+                5,
                 10,
                 10
               ],
-              "mean": 10,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The candidate uses placeholders to define exactly which quantities are needed to measure the outcome without fabricating specific numbers."
+              "mean": 8.33,
+              "stdev": 2.36,
+              "spread": 5,
+              "unstable": true,
+              "rationale": "The output gestures at a quantitative outcome using placeholders, but since no specific value is provided, the exact change remains unspecified."
             },
             "craft": {
               "weight": 0.0,
@@ -229,16 +249,18 @@
               "rationale": "The candidate fabricated specific methods (optimizing image assets, lazy loading) and metrics not present in the source text."
             }
           },
-          "score": 5.29,
+          "score": 4.9,
           "fabrication_vetoed": false,
-          "unstable_criteria": []
+          "unstable_criteria": [
+            "impact"
+          ]
         },
         {
           "id": "rbw-held-02",
           "split": "held_out",
           "candidates": {
             "0": "Accelerated weekly reporting efficiency by [X]% (saving [Y] hours per week) by architecting an internal automation tool that eliminated manual data entry.",
-            "1": "Accelerated weekly reporting efficiency by [X]% (saving [Y] hours per week) by architecting an internal automation tool.",
+            "1": "Accelerated weekly reporting efficiency by [X]% (saving [Y] hours/week) by architecting an internal automation tool that eliminated manual data entry.",
             "2": "Accelerated weekly reporting efficiency by [X]% (saving [Y] hours per week) by architecting an internal automation tool that eliminated manual data entry."
           },
           "evidence": {
@@ -248,6 +270,11 @@
             "filler_terms": [],
             "contains_number": false,
             "fabrication_risk": false
+          },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": false,
+            "2": false
           },
           "criteria": {
             "truthfulness": {
@@ -280,14 +307,14 @@
               "weight": 0.2353,
               "samples": [
                 10,
-                5,
+                10,
                 10
               ],
-              "mean": 8.33,
-              "stdev": 2.36,
-              "spread": 5,
-              "unstable": true,
-              "rationale": "The output specifies exactly which quantities are needed ([X]% and [Y] hours) to measure the change."
+              "mean": 10,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The output specifies exactly which quantities are needed ([X]% and [Y] hours) to measure the change in efficiency."
             },
             "craft": {
               "weight": 0.0,
@@ -303,19 +330,19 @@
               "rationale": "The candidate introduced significant padding and filler-opening phrasing ('Accelerated... efficiency') and fabricated details not present in the source text."
             }
           },
-          "score": 9.61,
+          "score": 10.0,
           "fabrication_vetoed": false,
-          "unstable_criteria": [
-            "impact"
-          ]
+          "unstable_criteria": []
         }
       ],
       "mean_score": 5.64,
       "min_score": 0.0,
-      "max_score": 9.61,
-      "stdev": 3.6,
+      "max_score": 10.0,
+      "stdev": 3.72,
       "any_fabrication": true,
-      "unstable": true
+      "unstable": true,
+      "unvetoed_mean_score": 7.52,
+      "unvetoed_tasks": 3
     },
     {
       "skill": "resume-quantifier",
@@ -328,12 +355,12 @@
           "id": "rq-train-01",
           "split": "train",
           "candidates": {
-            "0": "Managed a team of [Number] engineers responsible for the payments platform, processing [Volume] transactions per [Time Period] with [Percentage]% uptime.",
+            "0": "Managed a team of [X] engineers responsible for a payments platform processing [X] transactions per [day/month], ensuring [X]% system uptime and supporting $[X]M+ in annual transaction volume.",
             "1": "Managed a team of [Number] engineers responsible for the payments platform, processing [Volume] transactions per [Time Period] with [Percentage]% uptime.",
-            "2": "Managed a team of [Number] engineers responsible for a payments platform processing [Volume, e.g., $XM+ monthly], ensuring [Percentage, e.g., 99.9%] uptime and supporting [Number] concurrent transactions per second."
+            "2": "Managed a team of [Number] engineers responsible for the payments platform, processing [Volume] transactions per [Time Period] with [Percentage]% uptime."
           },
           "evidence": {
-            "words": 20,
+            "words": 27,
             "within_budget": true,
             "passive_markers": [
               "responsible for"
@@ -341,6 +368,11 @@
             "filler_terms": [],
             "contains_number": false,
             "fabrication_risk": false
+          },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": false,
+            "2": false
           },
           "criteria": {
             "truthfulness": {
@@ -354,20 +386,20 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate correctly used placeholders for unknowable quantities instead of inventing figures not present in the source."
+              "rationale": "The candidate correctly used placeholders for all unknowable quantities instead of inventing figures not present in the source."
             },
             "agency": {
               "weight": 0.2941,
               "samples": [
                 0,
-                10,
+                0,
                 0
               ],
-              "mean": 3.33,
-              "stdev": 4.71,
-              "spread": 10,
-              "unstable": true,
-              "rationale": "The candidate uses the passive/deflecting phrase 'responsible for' and fails to establish unambiguous agency for the actions."
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate uses the passive/deflecting phrase 'responsible for' and fails to establish unambiguous individual agency."
             },
             "impact": {
               "weight": 0.2353,
@@ -380,7 +412,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output uses placeholders instead of actual outcomes, effectively describing a task without specifying what changed or which quantities were achieved."
+              "rationale": "The output uses placeholders instead of actual outcomes, effectively describing a task without any discernible result."
             },
             "craft": {
               "weight": 0.0,
@@ -393,14 +425,12 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate used placeholders like '[Number]' and '[Volume]' which act as filler and padding, failing to provide dense, specific information."
+              "rationale": "The candidate added significant filler placeholders and fabricated metrics not present in the source text."
             }
           },
-          "score": 5.69,
+          "score": 4.71,
           "fabrication_vetoed": false,
-          "unstable_criteria": [
-            "agency"
-          ]
+          "unstable_criteria": []
         },
         {
           "id": "rq-train-02",
@@ -418,6 +448,11 @@
             "contains_number": false,
             "fabrication_risk": false
           },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": false,
+            "2": false
+          },
           "criteria": {
             "truthfulness": {
               "weight": 0.4706,
@@ -430,7 +465,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate used placeholders [X] and [Y] for unknowable quantities rather than inventing figures."
+              "rationale": "The candidate used placeholders [X] and [Y] for unknowable quantities rather than inventing figures, adhering strictly to the source."
             },
             "agency": {
               "weight": 0.2941,
@@ -448,15 +483,15 @@
             "impact": {
               "weight": 0.2353,
               "samples": [
-                10,
+                5,
                 10,
                 10
               ],
-              "mean": 10,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The reader knows exactly which quantities are needed to measure success via the placeholders."
+              "mean": 8.33,
+              "stdev": 2.36,
+              "spread": 5,
+              "unstable": true,
+              "rationale": "The output gestures at specific outcomes (cycle time and frequency) but uses placeholders instead of specifying what actually changed."
             },
             "craft": {
               "weight": 0.0,
@@ -472,9 +507,11 @@
               "rationale": "The candidate fabricated specific metrics (cycle time, frequency) not present in the source text, violating the constraint to not add any claims."
             }
           },
-          "score": 10.0,
+          "score": 9.61,
           "fabrication_vetoed": false,
-          "unstable_criteria": []
+          "unstable_criteria": [
+            "impact"
+          ]
         },
         {
           "id": "rq-held-01",
@@ -482,7 +519,7 @@
           "candidates": {
             "0": "Managed the migration of [Number]TB+ of data from a legacy warehouse to a new platform, ensuring [Percentage]% data integrity and reducing query latency by [Percentage]%.",
             "1": "Managed the migration of [Number]TB+ of data from a legacy warehouse to a new platform, ensuring 100% data integrity and reducing query latency by [X]% for [Number] downstream users.",
-            "2": "Managed the migration of [Number]TB+ of data from a legacy warehouse to a new platform, ensuring [Percentage]% data integrity and reducing query latency by [Percentage]%."
+            "2": "Managed the migration of [X]TB of data from a legacy warehouse to a new platform, ensuring 100% data integrity and reducing query latency by [X]% for [X]+ end users."
           },
           "evidence": {
             "words": 25,
@@ -492,19 +529,24 @@
             "contains_number": false,
             "fabrication_risk": false
           },
+          "fabrication_by_seed": {
+            "0": false,
+            "1": true,
+            "2": true
+          },
           "criteria": {
             "truthfulness": {
               "weight": 0.4706,
               "samples": [
                 10,
                 0,
-                10
+                0
               ],
-              "mean": 6.67,
+              "mean": 3.33,
               "stdev": 4.71,
               "spread": 10,
               "unstable": true,
-              "rationale": "The candidate preserved the source action and used placeholders for all unknowable quantities instead of inventing figures."
+              "rationale": "The candidate preserved the original action and used placeholders for all unknowable quantities instead of inventing figures."
             },
             "agency": {
               "weight": 0.2941,
@@ -530,7 +572,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate uses placeholders to specify exactly which quantities are needed to demonstrate impact."
+              "rationale": "The output uses placeholders to specify exactly which quantities are needed to demonstrate impact."
             },
             "craft": {
               "weight": 0.0,
@@ -543,7 +585,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate added fabricated claims regarding data integrity and query latency that were not present in the source text."
+              "rationale": "The candidate fabricated specific metrics (data integrity and query latency) not present in the source text."
             }
           },
           "score": 0.0,
@@ -557,8 +599,8 @@
           "split": "held_out",
           "candidates": {
             "0": "Reduced infrastructure spend for the streaming service by 15-20% through [insert specific action, e.g., optimizing instance sizing or implementing auto-scaling], resulting in an estimated annual cost saving of $[X]K.",
-            "1": "Reduced infrastructure spend for the streaming service by 15-20% through [insert specific action, e.g., optimizing instance sizing or implementing auto-scaling], resulting in an estimated annual cost saving of $[X]K.",
-            "2": "Reduced infrastructure spend for the streaming service by 15-20% through [insert specific action, e.g., optimizing instance sizing or implementing auto-scaling], resulting in an estimated annual cost saving of $[X]K."
+            "1": "Reduced infrastructure spend for the streaming service by [X]%, saving $[Y] annually through [specific action, e.g., optimizing instance sizing or implementing auto-scaling].",
+            "2": "Reduced infrastructure spend for the streaming service by [X]%, saving $[Y] annually through [specific action, e.g., optimizing instance sizing or implementing auto-scaling]."
           },
           "evidence": {
             "words": 29,
@@ -568,19 +610,24 @@
             "contains_number": true,
             "fabrication_risk": true
           },
+          "fabrication_by_seed": {
+            "0": true,
+            "1": false,
+            "2": false
+          },
           "criteria": {
             "truthfulness": {
               "weight": 0.4706,
               "samples": [
                 0,
-                0,
-                0
+                10,
+                10
               ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The candidate fabricated a specific percentage range (15-20%) that was not provided in the source text."
+              "mean": 6.67,
+              "stdev": 4.71,
+              "spread": 10,
+              "unstable": true,
+              "rationale": "The candidate fabricated a specific percentage range (15-20%) not present in the source text."
             },
             "agency": {
               "weight": 0.2941,
@@ -593,7 +640,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The sentence begins with a verb and lacks a subject, making the actor ambiguous and passive."
+              "rationale": "The sentence starts with a verb and lacks a subject, making the actor ambiguous and passive."
             },
             "impact": {
               "weight": 0.2353,
@@ -624,15 +671,19 @@
           },
           "score": 0.0,
           "fabrication_vetoed": true,
-          "unstable_criteria": []
+          "unstable_criteria": [
+            "truthfulness"
+          ]
         }
       ],
-      "mean_score": 3.92,
+      "mean_score": 3.58,
       "min_score": 0.0,
-      "max_score": 10.0,
-      "stdev": 4.21,
+      "max_score": 9.61,
+      "stdev": 3.98,
       "any_fabrication": true,
-      "unstable": true
+      "unstable": true,
+      "unvetoed_mean_score": 7.16,
+      "unvetoed_tasks": 2
     }
   ]
 }

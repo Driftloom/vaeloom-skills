@@ -18,7 +18,8 @@ from evals.layer3_variance import analyse, seed_scores, weighted_criteria
 WEIGHTED = {"truthfulness": 0.5, "agency": 0.3, "impact": 0.2}
 
 
-def make_task(task_id, truth, agency, impact, *, vetoed=False, weights=None):
+def make_task(task_id, truth, agency, impact, *, vetoed=False, weights=None,
+              fabrication_by_seed=None):
     weights = weights or WEIGHTED
     supplied = {"truthfulness": truth, "agency": agency, "impact": impact}
     criteria = {}
@@ -32,7 +33,10 @@ def make_task(task_id, truth, agency, impact, *, vetoed=False, weights=None):
             "spread": max(samples) - min(samples),
             "unstable": len(set(samples)) > 1,
         }
-    return {"id": task_id, "fabrication_vetoed": vetoed, "criteria": criteria}
+    task = {"id": task_id, "fabrication_vetoed": vetoed, "criteria": criteria}
+    if fabrication_by_seed is not None:
+        task["fabrication_by_seed"] = fabrication_by_seed
+    return task
 
 
 def st_mean(xs):
@@ -40,14 +44,36 @@ def st_mean(xs):
 
 
 def make_report(skills, seeds=3):
-    """Mirrors the real report shape: `seeds` lives on each result, not the root."""
+    """Mirrors the real report shape: `seeds` lives on each result, not the root.
+
+    `mean_score` is derived from the tasks rather than stubbed at 0.0, because
+    the fabrication-vs-prose gap is a difference against it -- a fixture whose
+    mean_score is 0 while its tasks score 10 makes every gap read as zero and
+    hides exactly the defect under test.
+    """
+    results = []
+    for name, tasks in skills:
+        scores = []
+        for t in tasks:
+            if t.get("fabrication_vetoed"):
+                scores.append(0.0)
+            elif "score" in t:
+                scores.append(t["score"])
+            else:
+                scores.append(sum(
+                    c["mean"] * c["weight"] for c in t["criteria"].values()
+                    if c["weight"] > 0
+                ))
+        results.append({
+            "skill": name,
+            "mean_score": round(sum(scores) / len(scores), 2) if scores else 0.0,
+            "seeds": seeds,
+            "tasks": tasks,
+        })
     return {
         "backend": "openai_compatible",
         "synthetic": False,
-        "results": [
-            {"skill": name, "mean_score": 0.0, "seeds": seeds, "tasks": tasks}
-            for name, tasks in skills
-        ],
+        "results": results,
     }
 
 
@@ -196,12 +222,17 @@ class TestJudgeConsistency:
 
 
 class TestFabricationRates:
-    def test_per_generation_rate_is_reported_separately_from_per_task(self):
+    def test_per_generation_rate_is_read_from_the_mechanical_flag(self):
         # Two of three generations fabricate in one task, two other tasks clean.
+        # The flag is mechanical; the truthfulness scores are deliberately
+        # inconsistent with it to prove they are not the source.
         tasks = [
-            make_task("t1", [10, 0, 0], [10, 10, 10], [10, 10, 10], vetoed=True),
-            make_task("t2", [10, 10, 10], [10, 10, 10], [10, 10, 10]),
-            make_task("t3", [10, 10, 10], [10, 10, 10], [10, 10, 10]),
+            make_task("t1", [10, 10, 10], [10, 10, 10], [10, 10, 10], vetoed=True,
+                      fabrication_by_seed={"0": False, "1": True, "2": True}),
+            make_task("t2", [10, 10, 10], [10, 10, 10], [10, 10, 10],
+                      fabrication_by_seed={"0": False, "1": False, "2": False}),
+            make_task("t3", [0, 0, 0], [10, 10, 10], [10, 10, 10],
+                      fabrication_by_seed={"0": False, "1": False, "2": False}),
         ]
         a = analyse(make_report([("s", tasks)]))
         assert a["generations"] == 9
@@ -209,19 +240,149 @@ class TestFabricationRates:
         assert a["fabrication_rate_per_generation"] == pytest.approx(22.2, abs=0.1)
         assert a["vetoed_tasks"] == 1
         assert a["veto_rate_worst_case"] == pytest.approx(33.3, abs=0.1)
+        # t3 scored truthfulness 0 on every seed yet fabricated in none. Counting
+        # it would have reported 5 fabrications instead of 2.
+        assert a["fabricating_generations"] == 2
+
+    def test_untruthful_prose_is_not_counted_as_fabrication(self):
+        """The bug this replaces: a truthfulness score of 0 was treated as
+        evidence that a number was invented. Those are different defects -- a
+        candidate can be untruthful with no figure in it, and conversely the
+        mechanical check is the only one that can see an invented figure the
+        judge happened to score 10."""
+        tasks = [
+            make_task("vague", [0, 0, 0], [10, 10, 10], [0, 0, 0],
+                      fabrication_by_seed={"0": False, "1": False, "2": False}),
+        ]
+        a = analyse(make_report([("s", tasks)]))
+        assert a["fabricating_generations"] == 0, "no figure was invented"
+        assert a["fabrication_rate_per_generation"] == 0.0
+
+    def test_invented_figure_scored_10_by_the_judge_is_still_fabrication(self):
+        tasks = [
+            make_task("sneaky", [10, 10, 10], [10, 10, 10], [10, 10, 10],
+                      vetoed=True,
+                      fabrication_by_seed={"0": True, "1": True, "2": False}),
+        ]
+        a = analyse(make_report([("s", tasks)]))
+        assert a["fabricating_generations"] == 2
+        assert a["fabrication_rate_per_generation"] == pytest.approx(66.7, abs=0.1)
+
+    def test_report_without_the_per_seed_flag_is_reported_unmeasurable(self):
+        """An older report cannot have its rate guessed at."""
+        tasks = [make_task("t1", [10, 0, 0], [10, 10, 10], [10, 10, 10], vetoed=True)]
+        a = analyse(make_report([("s", tasks)]))
+        assert a["fabrication_inferred_from_truthfulness"] == 3
+        assert a["fabrication_rate_per_generation"] is None, (
+            "must be unmeasurable, not silently proxied"
+        )
+        # The worst-case task figure is still available.
+        assert a["veto_rate_worst_case"] == 100.0
 
     def test_clean_run_reports_zero_rather_than_dividing_by_zero(self):
-        tasks = [make_task("t1", [10, 10, 10], [10, 10, 10], [10, 10, 10])]
+        tasks = [make_task("t1", [10, 10, 10], [10, 10, 10], [10, 10, 10],
+                           fabrication_by_seed={"0": False, "1": False, "2": False})]
         a = analyse(make_report([("s", tasks)]))
         assert a["fabrication_rate_per_generation"] == 0.0
         assert a["veto_rate_worst_case"] == 0.0
 
     def test_report_without_truthfulness_does_not_crash(self):
         weights = {"agency": 1.0}
-        tasks = [make_task("t1", [0, 0, 0], [10, 10, 10], [0, 0, 0], weights=weights)]
+        tasks = [make_task("t1", [0, 0, 0], [10, 10, 10], [0, 0, 0], weights=weights,
+                           fabrication_by_seed={"0": False, "1": False, "2": False})]
         a = analyse(make_report([("s", tasks)]))
-        assert a["generations"] == 0
+        assert a["generations"] == 3
         assert a["fabrication_rate_per_generation"] == 0.0
+
+
+class TestFabricationIsNotWritingQuality:
+    """A vetoed task is pinned to 0 whatever it scored. That conflates two
+    different defects, and on the live run the conflation is what the headline
+    number was actually measuring."""
+
+    def _skill_report(self, scores, vetoed):
+        """One-skill report where each task's score is fully self-consistent.
+
+        `truthfulness` carries the only weight, so its samples ARE the task
+        score. That keeps `seed_scores` and the unvetoed mean agreeing, which
+        is what makes the comparison between them meaningful.
+        """
+        weights = {"truthfulness": 1.0}
+        tasks = [
+            make_task(
+                f"t{i}", [score] * 3, [10] * 3, [10] * 3,
+                weights=weights, vetoed=vetoed[i],
+                fabrication_by_seed={"0": vetoed[i], "1": vetoed[i], "2": vetoed[i]},
+            )
+            for i, score in enumerate(scores)
+        ]
+        report = make_report([("s", tasks)])
+        assert report["results"][0]["mean_score"] == round(
+            sum(0.0 if v else s for s, v in zip(scores, vetoed)) / len(scores), 2
+        )
+        return report
+
+    def test_perfect_prose_plus_one_veto_is_still_reported_as_poor(self):
+        a = analyse(self._skill_report([10.0, 0.0], [False, True]))
+        assert a["skill_means"]["s"] == pytest.approx(5.0, abs=0.01)
+        assert a["unvetoed_means"]["s"] == pytest.approx(10.0, abs=0.01)
+        assert a["overall_minus_unvetoed"]["s"] == pytest.approx(-5.0, abs=0.01)
+        assert a["headline_mean_misattributes_fabrication"] is True
+
+    def test_clean_run_reports_no_gap(self):
+        a = analyse(self._skill_report([10.0, 8.0], [False, False]))
+        assert a["headline_mean_misattributes_fabrication"] is False
+
+    def test_veto_pins_to_zero_however_good_the_prose_was(self):
+        # 9/10 prose scores 0 once vetoed. That is the whole point of the split:
+        # the headline cannot distinguish "wrote a 9 and invented a number" from
+        # "wrote a 0".
+        a = analyse(self._skill_report([10.0, 9.0], [False, True]))
+        assert a["skill_means"]["s"] == pytest.approx(5.0, abs=0.01)
+        assert a["unvetoed_means"]["s"] == pytest.approx(10.0, abs=0.01)
+        assert a["overall_minus_unvetoed"]["s"] == pytest.approx(-5.0, abs=0.01)
+        assert a["material_fabrication_gaps"] == {"s": -5.0}
+        assert a["headline_mean_misattributes_fabrication"] is True
+
+    def test_small_gap_is_not_called_material(self):
+        # Nothing vetoed, so the two means average the same task set and the gap
+        # is exactly zero. The split only ever opens when the veto fires.
+        a = analyse(self._skill_report([10.0, 9.6], [False, False]))
+        assert a["unvetoed_task_counts"]["s"] == 2
+        assert a["overall_minus_unvetoed"]["s"] == pytest.approx(0.0, abs=1e-9)
+        assert a["material_fabrication_gaps"] == {}
+        assert a["headline_mean_misattributes_fabrication"] is False
+
+    def test_gap_just_under_the_threshold_is_not_material(self):
+        """Pins the 1.0 cutoff from below.
+
+        Two tasks, one vetoed. overall = S/2, unvetoed = S, so the gap is
+        -S/2. With S=1.8 that is exactly -0.9: real, but not enough to call the
+        headline mean a misreading. If the threshold drifted to 0.5, ordinary
+        score variation would be reported as a fabrication defect and send the
+        fix at the wrong thing.
+        """
+        a = analyse(self._skill_report([1.8, 10.0], [False, True]))
+        assert a["unvetoed_means"]["s"] == pytest.approx(1.8, abs=0.01)
+        assert a["skill_means"]["s"] == pytest.approx(0.9, abs=0.01)
+        assert a["overall_minus_unvetoed"]["s"] == pytest.approx(-0.9, abs=0.01)
+        assert a["material_fabrication_gaps"] == {}, "0.9 is below the 1.0 cutoff"
+        assert a["headline_mean_misattributes_fabrication"] is False
+
+    def test_gap_exactly_at_the_threshold_is_material(self):
+        a = analyse(self._skill_report([2.0, 10.0], [False, True]))
+        assert a["unvetoed_means"]["s"] == pytest.approx(2.0, abs=0.01)
+        assert a["overall_minus_unvetoed"]["s"] == pytest.approx(-1.0, abs=0.01)
+        assert a["material_fabrication_gaps"] == {"s": -1.0}
+        assert a["headline_mean_misattributes_fabrication"] is True
+
+    def test_fully_vetoed_skill_reports_no_unvetoed_mean(self):
+        a = analyse(self._skill_report([0.0, 0.0], [True, True]))
+        assert a["unvetoed_means"]["s"] is None
+        assert a["unvetoed_task_counts"]["s"] == 0
+        assert a["headline_mean_misattributes_fabrication"] is False, (
+            "with nothing unvetoed there is no prose quality to misattribute"
+        )
 
 
 class TestRealLiveReports:
@@ -240,6 +401,10 @@ class TestRealLiveReports:
                                 / "layer3-live-report.json").read_text(encoding="utf-8")))
         assert a["synthetic"] is False
         assert a["seeds"] == 1
+        # A 1-seed run has one generation per task, so the per-seed flag exists.
+        assert a["generations"] == 8
+        assert a["fabrication_inferred_from_truthfulness"] == 0
+        assert a["fabricating_generations"] > 0
         assert a["fabrication_rate_per_generation"] > 0
 
     def test_three_seed_report_orders_the_skills(self):

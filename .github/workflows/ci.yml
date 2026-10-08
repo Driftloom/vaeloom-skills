@@ -73,6 +73,13 @@ jobs:
         run: |
           python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report.json
 
+      - name: Verify the Layer 3 documentation still matches the measurements
+        # A doc that quotes numbers nothing checks is the same defect one level
+        # up from the analyser. This already caught a stale 1-seed mean and a
+        # per-generation rate rounded away from the analyser's own output.
+        run: |
+          python scripts/check_doc_figures.py
+
       - name: Run Skills Evals Benchmark Suite
         run: |
           python evals/run_evals.py

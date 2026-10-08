@@ -1,4 +1,4 @@
-"""Layer 3 harness correctness -- and its honesty properties.
+﻿"""Layer 3 harness correctness -- and its honesty properties.
 
 The harness is only worth building if three things are true:
 
@@ -57,7 +57,7 @@ def run_cli(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
     )
 
 
-# ── mechanical evidence ──────────────────────────────────────────────────
+# â”€â”€ mechanical evidence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_detects_passive_voice_and_filler() -> None:
@@ -95,7 +95,7 @@ def test_word_budget_is_enforced() -> None:
     assert layer3.mechanical_evidence("short bullet", {"max_words": 40})["within_budget"] is True
 
 
-# ── the prompt must judge the candidate, not the input ───────────────────
+# â”€â”€ the prompt must judge the candidate, not the input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_prompt_scores_the_generated_candidate_not_the_input() -> None:
@@ -112,7 +112,7 @@ def test_prompt_scores_the_generated_candidate_not_the_input() -> None:
     assert prompt.count("Worked on reducing page load time.") == 1
 
 
-# ── the rubric must be anchored ──────────────────────────────────────────
+# â”€â”€ the rubric must be anchored â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_every_rubric_criterion_is_anchored_at_zero_five_and_ten(spec) -> None:
@@ -187,13 +187,135 @@ def test_non_discriminating_returns_nothing_for_an_empty_run() -> None:
     assert layer3.non_discriminating([]) == {}
 
 
+def test_vetoed_work_is_reported_separately_from_writing_quality() -> None:
+    """A veto must not silently become evidence of bad writing.
+
+    On the live run both skills scored 5.44 and 3.68 overall but 7.26 and 7.36
+    once vetoed tasks were excluded. Reporting only the overall number would
+    have said both skills write poorly, when both write well and invent numbers
+    instead -- a different defect with a different fix.
+    """
+    rubric = {
+        "criteria": [
+            {"key": "truthfulness", "label": "Truthfulness", "weight": 0.5, "anchors": {}},
+            {"key": "agency", "label": "Agency", "weight": 0.5, "anchors": {}},
+        ]
+    }
+    # The source states no metric, so any figure the model emits is invented.
+    spec = {
+        "tasks": [
+            {
+                "id": "clean",
+                "split": "held_out",
+                "label": "clean bullet",
+                "source": "Led the migration and cut latency.",
+                "input": "write a bullet",
+                "judge_question": "Is the actor clear and is any figure sourced?",
+                "mechanical_expectations": {"must_not_fabricate": True, "source_has_no_metric": True},
+            },
+            {
+                "id": "invents",
+                "split": "held_out",
+                "label": "bullet inventing a metric",
+                "source": "Led the migration and cut latency.",
+                "input": "write a bullet id=invents",
+                "judge_question": "Is the actor clear and is any figure sourced?",
+                "mechanical_expectations": {"must_not_fabricate": True, "source_has_no_metric": True},
+            },
+        ]
+    }
+
+    class Backend:
+        """Emits a bare invented figure for task 'invents', nothing for 'clean'."""
+
+        name, synthetic = "fixed", False
+
+        def generate(self, *, skill_doc, task_input, seed):
+            return (
+                "Cut latency by 15-20%."
+                if "invents" in task_input
+                else "Led the migration that cut latency."
+            )
+
+        def judge(self, *, task_id, criterion, prompt, seed):
+            # Score every criterion at 10 so the veto is the ONLY reason a task
+            # can score low. If the two views were not separable, overall and
+            # unvetoed would collapse to the same number.
+            return {"score": 10, "rationale": "clean"}
+
+    result = layer3.evaluate_skill(
+        "resume-bullet-writer", spec, rubric, Backend(), "held_out", 1
+    )
+    vetoed = [t for t in result["tasks"] if t["fabrication_vetoed"]]
+    clean = [t for t in result["tasks"] if not t["fabrication_vetoed"]]
+    assert [t["id"] for t in vetoed] == ["invents"], [t["id"] for t in vetoed]
+    assert [t["id"] for t in clean] == ["clean"]
+
+    # Every unvetoed task scored a perfect 10 on every criterion...
+    clean_score = sum(
+        c["mean"] * c["weight"] for c in clean[0]["criteria"].values() if c["weight"] > 0
+    )
+    assert clean_score == 10.0, clean_score
+    # ...so a perfect 10 must NOT be dragged below 10 by the veto alone.
+    assert result["mean_score"] < 10.0, result["mean_score"]
+    assert result["mean_score"] == 5.0, result["mean_score"]
+    # And the unvetoed mean is what correctly reports the writing quality.
+    assert result["unvetoed_mean_score"] == 10.0, result["unvetoed_mean_score"]
+    assert result["unvetoed_tasks"] == 1
+
+
+def test_stub_backend_ignores_judge_temperature() -> None:
+    assert layer3.build_backend("stub", 0.7).synthetic is True
+
+
+def test_judge_temperature_is_carried_into_the_request(monkeypatch) -> None:
+    """--seeds is only a sampling-variance measurement when temperature > 0.
+
+    At temperature 0.0 the live judge returned identical criterion samples
+    across all three seeds, so the seeds proved reproducibility and nothing
+    else. The temperature has to be a real knob, not a constant, or that claim
+    can never be tested.
+    """
+    seen: dict = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return json.dumps({"choices": [{"message": {"content": "0"}}]}).encode()
+
+    def fake_urlopen(req, timeout=None):
+        seen.update(json.loads(req.data.decode()))
+        return FakeResponse()
+
+    monkeypatch.setenv("OPENAI_COMPATIBLE_BASE_URL", "https://example.invalid/v1")
+    monkeypatch.setenv("OPENAI_COMPATIBLE_API_KEY", "test-key-not-a-real-secret")
+    monkeypatch.setenv("OPENAI_COMPATIBLE_MODEL", "some-model")
+    # layer3_judge imports urllib.request lazily inside complete().
+    import urllib.request
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    layer3.OpenAICompatibleBackend(0.7)._chat("sys", "hi", seed=3)
+    assert seen["temperature"] == 0.7, seen
+    assert seen["seed"] == 3, seen
+    assert seen["model"] == "some-model", seen
+
+    layer3.OpenAICompatibleBackend(0.0)._chat("sys", "hi", seed=3)
+    assert seen["temperature"] == 0.0, seen
+
+
 def test_truthfulness_carries_the_heaviest_weight(spec) -> None:
     """Fabrication is the most damaging failure in this domain."""
     weights = {c["key"]: c["weight"] for c in spec["rubric"]["criteria"]}
     assert weights["truthfulness"] == max(weights.values())
 
 
-# ── splits ───────────────────────────────────────────────────────────────
+# â”€â”€ splits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_train_and_held_out_splits_are_disjoint(spec) -> None:
@@ -225,7 +347,7 @@ def test_a_missing_skill_document_is_a_hard_error() -> None:
         layer3.read_skill_doc("no-such-skill-exists")
 
 
-# ── honesty properties ───────────────────────────────────────────────────
+# â”€â”€ honesty properties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_stub_backend_is_marked_synthetic() -> None:
@@ -290,7 +412,7 @@ def test_unknown_backend_is_rejected() -> None:
     assert "unknown backend" in proc.stderr
 
 
-# ── determinism and variance ─────────────────────────────────────────────
+# â”€â”€ determinism and variance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_stub_run_is_deterministic() -> None:
@@ -350,7 +472,7 @@ def test_zero_seeds_is_rejected() -> None:
     assert proc.returncode != 0
 
 
-# ── the fabrication veto ─────────────────────────────────────────────────
+# â”€â”€ the fabrication veto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_fabrication_veto_zeroes_a_task_despite_a_generous_judge() -> None:
@@ -377,7 +499,7 @@ def test_fabrication_veto_zeroes_a_task_despite_a_generous_judge() -> None:
     assert any(c["mean"] > 0 for c in task["criteria"].values())
 
 
-# ── CLI surface ──────────────────────────────────────────────────────────
+# â”€â”€ CLI surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def test_list_reports_the_split_census() -> None:

@@ -202,7 +202,7 @@ class OpenAICompatibleBackend:
     name = "openai_compatible"
     synthetic = False
 
-    def __init__(self) -> None:
+    def __init__(self, temperature: float = 0.0) -> None:
         base = os.environ.get("OPENAI_COMPATIBLE_BASE_URL", "").strip()
         key = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "").strip()
         self.model = os.environ.get("OPENAI_COMPATIBLE_MODEL", "").strip()
@@ -215,6 +215,7 @@ class OpenAICompatibleBackend:
             )
         self.base = base.rstrip("/")
         self.key = key
+        self.temperature = temperature
 
     def _chat(self, system: str, user: str, seed: int) -> str:
         import urllib.request
@@ -225,7 +226,7 @@ class OpenAICompatibleBackend:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": 0.0,
+            "temperature": self.temperature,
             "seed": seed,
         }
         req = urllib.request.Request(
@@ -273,11 +274,11 @@ class OpenAICompatibleBackend:
         return {"score": max(0, min(10, int(parsed["score"]))), "rationale": parsed.get("rationale", "")}
 
 
-def build_backend(name: str):
+def build_backend(name: str, temperature: float = 0.0):
     if name == "stub":
         return StubBackend()
     if name == "openai_compatible":
-        return OpenAICompatibleBackend()
+        return OpenAICompatibleBackend(temperature)
     raise BackendUnavailable(f"unknown backend {name!r}; expected 'stub' or 'openai_compatible'")
 
 
@@ -359,6 +360,13 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
         # Worst-case fabrication across seeds: if any generation invented a
         # figure, the task is vetoed.
         fabrication = any(e["fabrication_risk"] for e in evidences.values())
+        # The per-seed flags are kept. Only the boolean above survives into the
+        # task record, and from it a per-generation rate cannot be recovered --
+        # inferring one from a truthfulness score of 0 conflates "invented a
+        # number" with "wrote untruthfully", which is a different defect.
+        fabrication_by_seed = {
+            str(s): bool(e["fabrication_risk"]) for s, e in evidences.items()
+        }
 
         # 3. JUDGE -- per criterion, per seed.
         criteria_scores: dict[str, dict] = {}
@@ -402,6 +410,7 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
             "split": task["split"],
             "candidates": candidates,
             "evidence": evidences[0],
+            "fabrication_by_seed": fabrication_by_seed,
             "criteria": criteria_scores,
             "score": total,
             "fabrication_vetoed": fabrication,
@@ -409,6 +418,8 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
         })
 
     scores = [t["score"] for t in per_task]
+    unvetoed = [t for t in per_task if not t["fabrication_vetoed"]]
+
     return {
         "skill": skill,
         "backend": backend.name,
@@ -422,6 +433,14 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
         "stdev": round(st.pstdev(scores), 2) if len(scores) > 1 else 0.0,
         "any_fabrication": any(t["fabrication_vetoed"] for t in per_task),
         "unstable": any(t["unstable_criteria"] for t in per_task),
+        # Vetoed tasks are counted as zeros above. That conflates "writes badly"
+        # with "invents figures", so the mean over unvetoed work is reported
+        # alongside. On the live run these were 5.44/7.26 and 3.68/7.36 -- the
+        # overall numbers were measuring fabrication, not prose.
+        "unvetoed_mean_score": round(st.mean([t["score"] for t in unvetoed]), 2)
+        if unvetoed
+        else None,
+        "unvetoed_tasks": len(unvetoed),
     }
 
 
@@ -431,6 +450,11 @@ def main() -> int:
                     help="'stub' (offline, synthetic) or 'openai_compatible' (live)")
     ap.add_argument("--split", default="held_out", choices=["held_out", "train", "all"])
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--judge-temperature", type=float, default=0.0,
+                    help="Sampling temperature for the judge. 0.0 (default) makes "
+                         "--seeds a reproducibility check -- same input, same score, "
+                         "which is what a regression gate needs. Raise it above 0 to "
+                         "make --seeds a sampling-variance measurement instead.")
     ap.add_argument("--min-score", type=float, default=None,
                     help="fail if any skill scores below this (live backends only)")
     ap.add_argument("--list", action="store_true")
@@ -452,7 +476,7 @@ def main() -> int:
         return 0
 
     try:
-        backend = build_backend(args.backend)
+        backend = build_backend(args.backend, args.judge_temperature)
     except BackendUnavailable as exc:
         print(f"FATAL: {exc}", file=sys.stderr)
         return 1
@@ -468,6 +492,11 @@ def main() -> int:
     print(f"backend   : {backend.name}")
     print(f"split     : {args.split}")
     print(f"seeds     : {args.seeds}")
+    if args.judge_temperature == 0.0 and args.seeds > 1:
+        print("            -> reproducibility mode (temperature 0.0): these seeds")
+        print("               confirm the same input yields the same score. This is")
+        print("               NOT sampling variance -- use --judge-temperature > 0")
+        print("               for that.")
     if backend.synthetic:
         print("SYNTHETIC : TRUE -- deterministic stand-in, NOT a model. No quality")
         print("            verdict is available from this run. See below.")
@@ -512,16 +541,71 @@ def main() -> int:
         return 0
 
     print("QUALITY REPORT (live backend)")
+
+    # The fabrication rate is reported ahead of the rubric means because when it
+    # is high it dominates them: a vetoed task is pinned to 0 regardless of how
+    # well it scored on the rubric. Quoting the mean alone would hide that.
+    total_tasks = sum(len(r["tasks"]) for r in results)
+    vetoed = sum(1 for r in results for t in r["tasks"] if t["fabrication_vetoed"])
+    rate = (100.0 * vetoed / total_tasks) if total_tasks else 0.0
+    print(f"\n  FABRICATION RATE : {vetoed}/{total_tasks} tasks ({rate:.0f}%)")
+    print("    This is the load-bearing result. Any task that invents a figure not")
+    print("    present in its source is pinned to 0 by the mechanical veto, so a")
+    print("    high rate compresses the rubric means downward and makes them")
+    print("    uninformative on their own. Fix fabrication first, then read means.")
+    print()
+
+    # Vetoed work is excluded from this mean rather than counted as a zero, so
+    # that "writes well" and "invents numbers" stay separable. On the live run
+    # the two skills scored 5.34 and 3.48 overall but 7.13 and 6.96 on unvetoed
+    # work -- the headline was measuring fabrication, not writing.
+    print(f"  {'skill':<26}{'overall':>9}{'unvetoed':>10}{'n':>4}   reading")
+    print("  " + "-" * 70)
+    for r in results:
+        if r["unvetoed_tasks"]:
+            unvetoed_mean = r["unvetoed_mean_score"]
+            gap = round(r["mean_score"] - unvetoed_mean, 2)
+            reading = (
+                f"writing is fine; the loss is fabrication ({gap:+.2f})"
+                if abs(gap) >= 1.0
+                else "consistent across both views"
+            )
+            print(f"  {r['skill']:<26}{r['mean_score']:>9}{unvetoed_mean:>10}"
+                  f"{r['unvetoed_tasks']:>4}   {reading}")
+        else:
+            print(f"  {r['skill']:<26}{r['mean_score']:>9}{'n/a':>10}{0:>4}   every task vetoed")
+    print()
+    print("    overall includes vetoed tasks as zeros; unvetoed excludes them.")
+    print("    A large gap means the skill is not bad at the writing, it is bad at")
+    print("    not inventing numbers -- a different and more fixable defect.")
+    print()
     for r in results:
         if r["any_fabrication"]:
             print(f"  {r['skill']}: FABRICATION observed -- mechanical veto applied")
         if r["unstable"]:
             print(f"  {r['skill']}: criterion seeds disagreed; treat the mean as unreliable")
+    if vetoed == total_tasks and total_tasks:
+        print("  NOTE: every task was vetoed, so the rubric contributed nothing to")
+        print("        this run's scores. This measures fabrication, not writing skill.")
     print("-" * 76)
 
     if args.json:
         args.json.write_text(
-            json.dumps({"synthetic": False, "backend": backend.name, "results": results}, indent=2),
+            json.dumps(
+                {
+                    "synthetic": False,
+                    "backend": backend.name,
+                    "judge_temperature": args.judge_temperature,
+                    "fabrication": {
+                        "vetoed_tasks": vetoed,
+                        "total_tasks": total_tasks,
+                        "rate_pct": round(rate, 1),
+                        "primary_metric": True,
+                    },
+                    "results": results,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         print(f"report written to {args.json}")
