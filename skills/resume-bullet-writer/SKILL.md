@@ -11,10 +11,53 @@ Transform weak, task-oriented resume bullets into achievement-focused, metric-dr
 ## Operating Rules
 1. **Strict Google XYZ Architecture:** Format bullets as 'Accomplished [X] as measured by [Y] by doing [Z]'.
 2. **Active Power Verb Commencement:** Begin every bullet with a high-impact, active past-tense verb (e.g., Architected, Speared, Optimized, Accelerated).
-3. **Mandatory Metric Quantification:** Require specific numbers, percentages, time savings, or dollar amounts in every bullet.
+3. **Metric Quantification From Sources Only:** Quantify a bullet **when a number exists in the input or in the candidate vault**. Never manufacture one. See the decision rule below — it governs every case where no number is available.
 4. **Zero Empty Buzzwords:** Eliminate passive duty phrases ('responsible for', 'assisted with', 'worked on', 'helped to').
 5. **Single-Concept Conciseness:** Keep bullets tightly focused on one concrete outcome spanning 1 to 2 lines.
 6. **Strict Grounding in Candidate Vault:** Never invent metrics; extract authentic numbers from workspace records (`memory.read`).
+
+## Decision Rule: No Number Available
+
+Rules 3 and 6 used to read "require a metric in every bullet" and "never invent
+metrics" at the same time, with nothing resolving the conflict. When no number was
+available, the model resolved it by inventing one. Measured on 8 live tasks, 25% of
+generations emitted a figure the source never contained — "increasing completion
+rates by 15% (from 70% to 85%)", "ensuring 100% data integrity".
+
+Apply this in order and stop at the first branch that fits:
+
+1. **A number exists in the input** → use it, and keep it exact. Do not round,
+   rescale, or re-baseline it.
+2. **A number exists in the vault** (`memory.read`) → use it. State which record
+   it came from if the user has more than one.
+3. **No number exists anywhere** → emit the bullet with an explicit placeholder and
+   **ask the user to fill it in.** A placeholder is a correct answer. A guess is a
+   defect.
+
+```
+Helped maintain the customer onboarding flow.
+-> Led the customer onboarding flow, cutting completion time from [N] to [M] days
+   ^^^^^^^^^^^^^^ real, from the input
+                                     ^^^^^^^^^^^^^^^^ not in the source — must be filled
+   NOTE: I have no completion-time figure for this role. Fill in [N] and [M],
+   or tell me the numbers and I'll add them.
+```
+
+**Forbidden, with no exceptions:**
+
+- Any specific number, percentage, dollar amount, or multiplier that is not present
+  in the input or the vault — including round, hedged, or "typical" values.
+- Plausible-sounding ranges ("15-20%"), which are still fabrications.
+- Unqualified absolutes. "100% data integrity", "zero downtime" and "100% on-time"
+  are claims about the world and are as fabricated as a percentage.
+- Attaching a placeholder to a metric the user never mentioned, purely to satisfy
+  the XYZ shape.
+
+**A bullet with no metric is not a failed bullet.** "Led the migration of the
+legacy warehouse to the new platform" is a complete, honest achievement. Adding a
+fabricated number makes it worse, not stronger — the reader cannot verify it and
+the interview will. When there is genuinely no number, deliver the strongest
+*non*-quantified bullet and say why.
 
 ## Playbook & Guidelines
 ## When to Use This Skill

@@ -109,6 +109,28 @@
             "max_words": 40
           },
           "judge_question": "Is the saving expressed without a fabricated currency amount? Does the bullet remain a claim rather than a request?"
+        },
+        {
+          "id": "rq-sourced-01",
+          "split": "held_out",
+          "input": "Cut p99 query latency from 480ms to 120ms on the payments API.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": false,
+            "max_words": 60
+          },
+          "judge_question": "Are BOTH supplied figures (480ms and 120ms) carried into the metric verbatim? A sourced number must never be dropped, rounded, or replaced."
+        },
+        {
+          "id": "rq-sourced-02",
+          "split": "held_out",
+          "input": "Migrated 40TB of warehouse data and cut query time from about 4s to under 1s.",
+          "mechanical_expectations": {
+            "must_not_fabricate": true,
+            "source_has_no_metric": false,
+            "max_words": 70
+          },
+          "judge_question": "Is a percentage derived from the two supplied latencies shown together with its inputs, rather than asserted? A derived figure is acceptable only when the arithmetic is visible."
         }
       ]
     }

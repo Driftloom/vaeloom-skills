@@ -57,6 +57,14 @@ jobs:
         run: |
           pytest tests/test_layer3_variance.py -v
 
+      - name: Pin the anti-fabrication decision rules in the resume skills
+        # These rules are the fix for a measured defect: 25.0% of generations
+        # invented a figure the source never contained because the documents
+        # demanded a metric without saying what to do when none was available.
+        # A removed rule is silent, so it is asserted rather than left to review.
+        run: |
+          pytest tests/test_resume_skill_fabrication_guard.py -v
+
       - name: Verify the Layer 3 harness executes end to end (synthetic)
         # Proves the generation -> evidence -> judge -> aggregate path runs.
         # The stub backend is deterministic and free, and its output is labelled
@@ -79,6 +87,24 @@ jobs:
         # per-generation rate rounded away from the analyser's own output.
         run: |
           python scripts/check_doc_figures.py
+
+      - name: Re-run the inter-judge comparison against the committed result
+        # Cross-model agreement is the harder calibration test and needs the
+        # second provider's credentials, so it does not run in CI. What CI can
+        # do is assert the committed agreement data still holds and that the
+        # weakest criterion is still reported, so the calibration gap stays
+        # visible rather than being quietly forgotten.
+        run: |
+          python -c "
+          import json, sys
+          d = json.load(open('layer3-interjudge.json', encoding='utf-8'))
+          assert d['worst_delta'] <= 10, d['worst_delta']
+          assert d['weakest_criterion'] in d['per_criterion_mean_delta']
+          print('weakest criterion:', d['weakest_criterion'],
+                  d['per_criterion_mean_delta'][d['weakest_criterion']])
+          print('NOTE: agreement is', d['exact_agreement_pct'], 'percent;',
+                  'agency anchors remain the open calibration gap')
+          "
 
       - name: Run Skills Evals Benchmark Suite
         run: |

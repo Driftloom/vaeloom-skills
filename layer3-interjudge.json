@@ -1,0 +1,225 @@
+{
+  "second_judge": "openai/gpt-oss-120b",
+  "compared": 30,
+  "exact_agreement_pct": 50.0,
+  "mean_abs_delta": 3.33,
+  "worst_delta": 10,
+  "per_criterion_mean_delta": {
+    "truthfulness": 1,
+    "agency": 7,
+    "impact": 2
+  },
+  "weakest_criterion": "agency",
+  "pairs": [
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-01",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-01",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-01",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-02",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 0
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-02",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-train-02",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-01",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-01",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-01",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-02",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-02",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-bullet-writer",
+      "task": "rbw-held-02",
+      "criterion": "impact",
+      "primary": 5,
+      "second": 5
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-01",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-01",
+      "criterion": "agency",
+      "primary": 0,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-01",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 0
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-02",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-02",
+      "criterion": "agency",
+      "primary": 0,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-train-02",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 0
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-01",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-01",
+      "criterion": "agency",
+      "primary": 0,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-01",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 5
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-02",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-02",
+      "criterion": "agency",
+      "primary": 0,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-held-02",
+      "criterion": "impact",
+      "primary": 0,
+      "second": 0
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-01",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-01",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-01",
+      "criterion": "impact",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-02",
+      "criterion": "truthfulness",
+      "primary": 10,
+      "second": 10
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-02",
+      "criterion": "agency",
+      "primary": 10,
+      "second": 5
+    },
+    {
+      "skill": "resume-quantifier",
+      "task": "rq-sourced-02",
+      "criterion": "impact",
+      "primary": 10,
+      "second": 10
+    }
+  ]
+}

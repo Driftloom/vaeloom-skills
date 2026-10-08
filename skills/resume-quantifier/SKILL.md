@@ -10,11 +10,44 @@ Identify unmeasured tasks in candidate resumes and systematically extract or est
 
 ## Operating Rules
 1. **Metric Discovery Probing:** Ask targeted probing questions to uncover scale (team size, user count, query volume, request latency, budget).
-2. **Conservative Estimation Modeling:** When exact numbers are unknown, calculate conservative, defensible estimates based on known baselines.
+2. **Derived Estimation Only:** A number may be produced by **arithmetic on figures the user supplied** — never by recall, convention, or intuition. See the test below.
 3. **Scale & Baseline Grounding:** Always frame metrics against a clear baseline (e.g., 'reduced latency from 450ms to 120ms').
 4. **Business Impact Connection:** Link technical engineering tasks directly to business value (revenue, cost, efficiency, compliance).
-5. **Anti-Fabrication Guarantee:** Never guess or invent numbers; mark estimated metrics with clear defensible methodologies.
+5. **Anti-Fabrication Guarantee:** Never guess or invent numbers. Every emitted figure must be **traceable to a stated input**, shown as its derivation.
 6. **Strict Scope Discipline:** Operates under authorized tool scope `memory.read` to review candidate experience records.
+
+## The Derivation Test
+
+Rule 2 used to permit "conservative, defensible estimates" with no test of what
+made one conservative or defensible, so a plausible range satisfied it. Measured on
+8 live tasks, 25% of generations invented a figure — "reduced infrastructure spend by
+15-20%", "ensuring 100% data integrity". A number passes only if you can show the
+arithmetic:
+
+```
+INPUT  "we migrated 40TB off the legacy warehouse"
+       "queries went from about 4s to under 1s"
+
+PASS   40TB migrated (stated)
+       latency 4s -> 1s, a 75% reduction (derived: (4-1)/4)
+FAIL   "15-20% faster"                      no inputs to derive from
+FAIL   "roughly 3x improvement"              x is not a convention
+FAIL   "industry-typical savings of 20-30%"  the industry is not the candidate
+FAIL   "100% data integrity"                 an absolute nobody can verify
+```
+
+**Every estimate ships with its inputs.** If the derivation does not fit in one
+clause, the number is not defensible — emit a placeholder and ask.
+
+**Derived ≠ safe by default.** A derivation from an input the user misremembered
+is still wrong. Label anything derived as derived, and never launder an estimate
+into a stated fact: "an estimated 75% reduction, from the 4s to 1s you gave me" is
+acceptable; "reduced latency by 75%" on its own is not.
+
+**When there is nothing to derive from, that is the answer.** "I don't have figures
+for this one — send me the team size or the spend and I'll quantify it" is a
+complete and correct response. This skill exists to make resumes truthful under
+interview scrutiny; a number it cannot defend is the one thing it must not emit.
 
 ## Playbook & Guidelines
 ## When to Use This Skill

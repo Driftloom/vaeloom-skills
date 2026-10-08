@@ -10,6 +10,14 @@ It exists because it already caught two: the 1-seed mean for
 and the per-generation fabrication rate was written as 25% against an analyser
 output of 25.0%.
 
+Limitation, stated rather than papered over: this checks that each figure is
+*present* in the prose, not that it appears in the right place. If a figure is
+quoted in two places and only one is wrong, a single correct occurrence satisfies
+the check. That is why the number appears both in the results tables and in the
+prose -- there is no anchor to tie a figure to its claim. Making it positional
+would mean hand-maintaining a map of which line asserts what, which drifts for its
+own reasons. Treat this as a floor on doc accuracy, not a proof of it.
+
 Run:  python scripts/check_doc_figures.py
 """
 import json
@@ -20,9 +28,26 @@ ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "docs" / "layer3-judging.md"
 ONE_SEED = "layer3-live-report.json"
 THREE_SEED = "layer3-live-s3.json"
+INTERJUDGE = "layer3-interjudge.json"
 
 sys.path.insert(0, str(ROOT / "evals"))
 from layer3_variance import analyse  # noqa: E402
+
+
+def interjudge_figures() -> list[tuple[str, str]]:
+    """Figures quoted from the cross-model comparison, if that run is committed."""
+    path = ROOT / INTERJUDGE
+    if not path.is_file():
+        return []
+    d = json.loads(path.read_text(encoding="utf-8"))
+    out = [
+        ("inter-judge exact agreement", f"{int(d['exact_agreement_pct'])}%"),
+        ("inter-judge mean difference", f"{d['mean_abs_delta']:.2f}"),
+        ("inter-judge worst difference", str(d["worst_delta"])),
+    ]
+    for key, value in d["per_criterion_mean_delta"].items():
+        out.append((f"inter-judge delta {key}", f"{value:.2f}"))
+    return out
 
 
 def main() -> int:
@@ -56,7 +81,8 @@ def main() -> int:
     need("fabrication numerator",
          f"{a3['fabricating_generations']} of {a3['generations']}")
 
-    need("full-range disagreements", f"{a3['full_range_disagreements']} of 24")
+    need("full-range disagreements",
+         f"{a3['full_range_disagreements']} of {a3['criterion_task_pairs']}")
     need("full-range rate", f"{a3['full_range_rate']}%")
 
     for skill in a3["skill_means"]:
@@ -65,6 +91,12 @@ def main() -> int:
     for skill, means in a3["per_skill_seed_means"].items():
         need(f"per-seed means {skill}",
              "`[" + ", ".join(f"{m:.2f}" for m in means) + "]`")
+
+    # Criterion-task pairs is a denominator the doc quotes in prose.
+    need("criterion-task pairs", f"{a3['criterion_task_pairs']}")
+
+    for label, needle in interjudge_figures():
+        need(label, needle)
 
     missing = [(label, needle) for label, needle in checks if needle not in doc]
     for label, needle in checks:
