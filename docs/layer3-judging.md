@@ -232,40 +232,62 @@ committed candidates with a second model family and reports the divergence:
 python evals/layer3_interjudge.py --out layer3-interjudge.json
 ```
 
-| | value |
-|---|---|
-| judgements compared | 30 |
-| exact agreement | 15/30 (**50%**) |
-| mean absolute difference | **3.33 / 10** |
-| worst difference | 10 |
-
-| Criterion | mean absolute difference | verdict |
+| | before | after |
 |---|---|---|
-| `truthfulness` | 1.00 | usable |
-| `impact` | 2.00 | weak |
-| `agency` | **7.00** | **ambiguous** |
+| judgements compared | 30 | 30 |
+| exact agreement | 15/30 (50%) | **26/30 (86%)** |
+| mean absolute difference | 3.33 / 10 | **0.83 / 10** |
+| worst difference | 10 | 10 |
 
-The divergence is systematic rather than random, and it is directional:
-`gemma4:31b` gives `agency` 10 where the second judge gives 5, and gives `impact`
-0 where the second gives 5. Read against the anchors, the primary judge is
-treating `impact` as *"was a metric present"* and `agency` as *"is there a strong
-opening verb"* — near-binary readings of criteria whose anchors were written to
-allow gradation.
+| Criterion | before | after |
+|---|---|---|
+| `truthfulness` | 1.00 | 1.00 |
+| `impact` | 2.00 | **1.50** |
+| `agency` | **7.00** | **0.00** |
 
-### What this does and does not invalidate
+`agency` reached exact agreement on all ten judgements. Both failure patterns
+collapsed:
 
-- **The fabrication result stands.** It is measured mechanically from the output
-  text rather than from a judge, and `truthfulness` is the criterion the two
-  judges agree on most closely (mean absolute difference 1.00).
-- **The composite score does not survive as a precise figure.** `agency` and
-  `impact` carry roughly ±3 points of judge-dependent movement, so `7.21` is a
-  band rather than a measurement to two decimals.
-- **Do not quote `agency` or `impact` scores individually** until their anchors
-  separate the levels more sharply. `agency` is the priority: it is weighted
-  0.2941 and is the least reproducible criterion in the rubric.
+- The four refusals (`"I don't have figures for this one—send me…"`) score `0`
+  from **both** judges, where they previously scored 0 and 10. The old 10 anchor
+  read *"the actor and the action are unambiguous in the first clause"*, and a
+  polite request for figures satisfies that literally: the actor is `I` and the
+  action is `send me`. It is not an achievement.
+- The six achievement bullets score `10` from **both** judges, where they
+  previously scored 10 and 5. The old 5 anchor said *"agency is implied but not
+  stated"*, and every one of these omits the subject — which is how resume
+  convention works. The anchor was punishing the convention, not a defect.
 
-This is the largest remaining calibration gap and it is **not** closed. What now
-exists is the measurement of it, so the ambiguity is a known number rather than an
+The rewritten anchors separate three things the old ones conflated: whether the
+output is an achievement at all, whether the actor is obscured, and whether
+ownership is unmistakable given that the subject is conventionally omitted.
+
+### This result is partly circular, and that matters
+
+These anchors were written **after reading the ten disagreements they then
+reproduce**. Re-running the same ten judgements and getting perfect agreement is
+substantially anchor-fitting, not generalization, and it should not be read as
+evidence that the rubric is calibrated.
+
+What is *not* circular is the diagnosis. The two failure modes were identifiable
+without the new anchors as defects on their own terms: a refusal scoring 10 for
+agency is wrong under any anchor set, and an anchor that caps every conventional
+resume bullet at 5 is measuring the wrong thing. The fix encodes those two
+observations. What still requires evidence is that the new anchors hold on
+judgements neither of us has looked at.
+
+### What remains open
+
+| Criterion | mean \|delta\| | note |
+|---|---|---|
+| `impact` | 1.50 | now the weakest, same directional bias: the primary judge reads it as *"was a metric present"* and scores placeholder bullets 0 where the second scores 5 |
+| `truthfulness` | 1.00 | one 10-point flip remains, and it is the second judge that is wrong — it read `[N]% to [M]%` as a claim rather than a marked blank |
+
+`impact` is the next candidate for the same treatment. It has **not** been
+redesigned here: that would be a second bounded change with its own review.
+
+This remains the largest calibration gap and it is **not** closed. What exists
+now is the measurement of it, so the ambiguity is a known number rather than an
 assumption.
 
 ## Four design choices, each avoiding a dishonesty

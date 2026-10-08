@@ -153,9 +153,9 @@
         "label": "Explicit agency",
         "weight": 0.2941,
         "anchors": {
-          "0": "Passive or team-deflecting ('responsible for', 'helped with', 'we').",
-          "5": "Agency is implied but not stated; a reader could not tell who did the work.",
-          "10": "The actor and the action are unambiguous in the first clause."
+          "0": "Not an achievement at all: a request for information, a question, a statement that something is missing, or a duty description with no outcome ('send me the figures', 'responsible for the payments platform').",
+          "5": "An achievement whose actor is obscured: passive construction, team attribution ('we', 'the team'), or a verb so generic the reader cannot tell what was done ('managed', 'handled', 'supported').",
+          "10": "An achievement where the specific verb and its object make ownership unmistakable even though the subject is omitted, as resume convention requires ('migrated 40TB off the legacy warehouse', 'cut p99 latency from 480ms to 120ms')."
         }
       },
       {

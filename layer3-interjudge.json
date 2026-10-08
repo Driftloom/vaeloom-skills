@@ -1,15 +1,15 @@
 {
   "second_judge": "openai/gpt-oss-120b",
   "compared": 30,
-  "exact_agreement_pct": 50.0,
-  "mean_abs_delta": 3.33,
+  "exact_agreement_pct": 86.7,
+  "mean_abs_delta": 0.83,
   "worst_delta": 10,
   "per_criterion_mean_delta": {
     "truthfulness": 1,
-    "agency": 7,
-    "impact": 2
+    "agency": 0,
+    "impact": 1.5
   },
-  "weakest_criterion": "agency",
+  "weakest_criterion": "impact",
   "pairs": [
     {
       "skill": "resume-bullet-writer",
@@ -23,7 +23,7 @@
       "task": "rbw-train-01",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-bullet-writer",
@@ -44,7 +44,7 @@
       "task": "rbw-train-02",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-bullet-writer",
@@ -65,7 +65,7 @@
       "task": "rbw-held-01",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-bullet-writer",
@@ -86,7 +86,7 @@
       "task": "rbw-held-02",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-bullet-writer",
@@ -107,7 +107,7 @@
       "task": "rq-train-01",
       "criterion": "agency",
       "primary": 0,
-      "second": 10
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
@@ -128,7 +128,7 @@
       "task": "rq-train-02",
       "criterion": "agency",
       "primary": 0,
-      "second": 10
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
@@ -149,14 +149,14 @@
       "task": "rq-held-01",
       "criterion": "agency",
       "primary": 0,
-      "second": 10
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
       "task": "rq-held-01",
       "criterion": "impact",
       "primary": 0,
-      "second": 5
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
@@ -170,7 +170,7 @@
       "task": "rq-held-02",
       "criterion": "agency",
       "primary": 0,
-      "second": 10
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
@@ -191,7 +191,7 @@
       "task": "rq-sourced-01",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-quantifier",
@@ -212,7 +212,7 @@
       "task": "rq-sourced-02",
       "criterion": "agency",
       "primary": 10,
-      "second": 5
+      "second": 10
     },
     {
       "skill": "resume-quantifier",
