@@ -75,6 +75,54 @@ PASSIVE_MARKERS = (
 # must not read as fabricated figures.
 PLACEHOLDER_RE = re.compile(r"\[[^\]]*\]|\{[^}]*\}|<[^>]*>")
 
+# A placeholder is "scaffolding" when it occupies a structural slot rather than
+# naming a quantity. These are the triggers from spec section 3.1 and the complete
+# list -- a fourth would change behaviour that no decision covers.
+_FORMULA_VARIABLE_RE = re.compile(r"^[XYZxyz]$")
+_STANDALONE_BY_RE = re.compile(r"\bby\s*$", re.IGNORECASE)
+# A bracket that names a quantity rather than instructing the writer. Checked
+# before the instruction trigger so "[budget]" is never read as "begin with a verb".
+_BRACKETED_NOUN_RE = re.compile(r"^(?:the\s+)?[a-z][a-z ]{0,24}$", re.IGNORECASE)
+_INSTRUCTION_VERBS = {
+    "insert", "add", "describe", "specify", "list", "name", "fill",
+    "enter", "replace", "provide", "detail", "quantify",
+}
+
+
+def classify_placeholders(text: str) -> dict:
+    """Classify every placeholder as scaffolding or named.
+
+    Answers exactly one question: does this placeholder occupy a structural
+    slot? It does not judge whether the named quantity is a good thing to
+    measure or whether the surrounding prose is good. Those remain the judge's.
+
+    The first trigger reads the bracket's own contents; the second reads the
+    text. A trigger that reads surrounding text reads only what immediately
+    precedes the placeholder -- never what follows it, and never at a distance --
+    because a proximity window misclassifies "recovered by the team, recovering
+    [N] accounts" as scaffolding.
+    """
+    total = named = scaffolded = 0
+    for match in PLACEHOLDER_RE.finditer(text):
+        total += 1
+        inner = match.group(0)[1:-1].strip()
+        before = text[: match.start()].rstrip()
+        if _FORMULA_VARIABLE_RE.match(inner):
+            scaffolded += 1
+            continue
+        if _STANDALONE_BY_RE.search(before):
+            scaffolded += 1
+            continue
+        lowered = inner.lower()
+        if lowered and _BRACKETED_NOUN_RE.match(inner) and not lowered.startswith("your"):
+            # "[budget]" names a quantity; "[add metric]" tells the writer to act.
+            if lowered.split()[0] not in _INSTRUCTION_VERBS:
+                named += 1
+                continue
+        scaffolded += 1
+    return {"total": total, "named": named, "scaffolded": scaffolded}
+
+
 # Word-boundary variants. Matching a bare substring misses every morphological
 # form, so "leveraged" would not catch "leveraging" and "synergy" would not catch
 # "synergies" -- which is precisely the vocabulary a model actually reaches for.
