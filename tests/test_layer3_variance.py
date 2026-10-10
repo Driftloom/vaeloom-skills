@@ -412,13 +412,47 @@ class TestRealLiveReports:
         assert a["fabrication_rate_per_generation"] is not None
         assert a["fabrication_rate_per_generation"] >= 0
 
-    def test_three_seed_report_orders_the_skills(self):
+    def test_three_seed_report_supports_no_skill_ranking(self):
+        """It is no longer true that resume-bullet-writer outscores
+        resume-quantifier, and a 0.37 gap on 10 tasks could not support a
+        ranking either way.
+
+        Under the older `agency` anchors, bullet-writer scored 7.94 against
+        quantifier's 6.47, because a strong opening verb was enough for full
+        agency marks. Tightening that anchor penalises bullet-writer specifically:
+        most of its output is placeholder scaffolding ('improving [X] as measured
+        by [Y] by [Z]'), which no longer reads as unmistakable ownership. It now
+        scores 6.10, below quantifier's 6.47.
+
+        This test asserts what the data actually supports instead of a ranking
+        that flipped when the rubric tightened. Asserting an order here would
+        re-introduce exactly the over-claiming this file exists to prevent -- the
+        ordering was previously 'supported' only because the anchors were loose
+        enough to separate the two.
+        """
         import json
         a = analyse(json.loads((Path(__file__).resolve().parent.parent
                                 / "layer3-live-s3.json").read_text(encoding="utf-8")))
         means = a["skill_means"]
-        assert means["resume-bullet-writer"] > means["resume-quantifier"]
-        assert a["ordering_supported"] is True
+        for skill, mean in means.items():
+            assert mean > 0.0, f"{skill} scored {mean}; a skill should not be at zero"
+        gap = a["between_skill_gap"]
+        assert gap < 2.0, (
+            f"between-skill gap is {gap}, which on 10 tasks with 2 skills is not "
+            "enough to rank them; do not assert an ordering"
+        )
+
+    def test_fabrication_result_is_the_load_bearing_claim(self):
+        """The headline worth pinning is the one measured mechanically, not the
+        composite that depends on judge agreement."""
+        import json
+        a = analyse(json.loads((Path(__file__).resolve().parent.parent
+                                / "layer3-live-s3.json").read_text(encoding="utf-8")))
+        assert a["fabrication_rate_per_generation"] == 0.0, (
+            "the resume skills were fixed to stop inventing figures; if this "
+            "regresses the skill-document fix has been undone"
+        )
+        assert a["veto_rate_worst_case"] == 0.0
 
     def test_craft_stays_disabled_so_it_cannot_reintroduce_variance(self):
         import json

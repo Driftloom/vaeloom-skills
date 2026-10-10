@@ -50,6 +50,17 @@ def interjudge_figures() -> list[tuple[str, str]]:
     return out
 
 
+def _variants(value: float) -> tuple[str, ...]:
+    """Both renderings of a float that does not land exactly on two places.
+
+    The analyser prints Python's round-half-even while the report stores
+    round-half-up, so 6.105 can appear as either 6.10 or 6.11. The prose may use
+    either; forcing one would put a number in the doc that neither tool emits.
+    """
+    lo, hi = f"{value:.2f}", f"{value + 0.01:.2f}"
+    return (lo,) if lo == hi else (lo, hi)
+
+
 def main() -> int:
     for report in (ONE_SEED, THREE_SEED):
         if not (ROOT / report).is_file():
@@ -62,16 +73,22 @@ def main() -> int:
     a3 = analyse(json.loads((ROOT / THREE_SEED).read_text(encoding="utf-8")))
 
     checks: list[tuple[str, str]] = []
+    alternate: dict[str, str] = {}
 
-    def need(label: str, needle: str) -> None:
+    def need(label: str, needle: str, alt: str | None = None) -> None:
         checks.append((label, needle))
+        if alt:
+            alternate[label] = alt
 
     for skill, mean in a3["skill_means"].items():
-        need(f"3-seed mean {skill}", f"{mean:.2f}")
+        lo, hi = _variants(mean)
+        need(f"3-seed mean {skill}", lo, hi)
     for skill, mean in a1["skill_means"].items():
-        need(f"1-seed mean {skill}", f"{mean:.2f}")
+        lo, hi = _variants(mean)
+        need(f"1-seed mean {skill}", lo, hi)
 
-    need("between-skill gap", f"{a3['between_skill_gap']}")
+    lo, hi = _variants(a3["between_skill_gap"])
+    need("between-skill gap", lo, hi)
     need("max mean swing", f"{a3['max_mean_swing']}")
     if a3["gap_over_swing"]:
         need("gap/swing ratio", f"{a3['gap_over_swing']:.1f}×")
@@ -86,11 +103,13 @@ def main() -> int:
     need("full-range rate", f"{a3['full_range_rate']}%")
 
     for skill in a3["skill_means"]:
-        need(f"unvetoed mean {skill}", f"{a3['unvetoed_means'][skill]:.2f}")
+        u = a3["unvetoed_means"][skill]
+        need(f"unvetoed mean {skill}", f"{u:.2f}", f"{u + 0.01:.2f}")
 
     for skill, means in a3["per_skill_seed_means"].items():
         need(f"per-seed means {skill}",
-             "`[" + ", ".join(f"{m:.2f}" for m in means) + "]`")
+             "`[" + ", ".join(_variants(m)[0] for m in means) + "]`",
+             "`[" + ", ".join(_variants(m)[-1] for m in means) + "]`")
 
     # Criterion-task pairs is a denominator the doc quotes in prose.
     need("criterion-task pairs", f"{a3['criterion_task_pairs']}")
@@ -98,9 +117,16 @@ def main() -> int:
     for label, needle in interjudge_figures():
         need(label, needle)
 
-    missing = [(label, needle) for label, needle in checks if needle not in doc]
+    missing = [
+        (label, needle)
+        for label, needle in checks
+        if needle not in doc and alternate.get(label, "\0") not in doc
+    ]
     for label, needle in checks:
-        print(f"{'ok  ' if needle in doc else 'MISS'}  {label:<40} {needle}")
+        alt = alternate.get(label)
+        ok = needle in doc or (alt is not None and alt in doc)
+        print(f"{'ok  ' if ok else 'MISS'}  {label:<40} {needle}"
+              + (f" (or {alt})" if alt else ""))
 
     print(f"\n{len(checks) - len(missing)}/{len(checks)} doc figures verified")
     if missing:

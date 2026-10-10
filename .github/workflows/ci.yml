@@ -57,6 +57,13 @@ jobs:
         run: |
           pytest tests/test_layer3_variance.py -v
 
+      - name: Run Layer 3 staleness guard tests
+        # A report that does not record the rubric it was scored against cannot
+        # be compared against one scored under a different rubric. That mistake
+        # produced a false 0.00 agreement figure for `agency`.
+        run: |
+          pytest tests/test_layer3_staleness_guard.py -v
+
       - name: Pin the anti-fabrication decision rules in the resume skills
         # These rules are the fix for a measured defect: 25.0% of generations
         # invented a figure the source never contained because the documents

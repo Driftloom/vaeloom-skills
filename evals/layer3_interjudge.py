@@ -130,6 +130,30 @@ def main() -> int:
     rubric = spec["rubric"]
     active = [c for c in rubric["criteria"] if c.get("enabled", True) and c["weight"] > 0]
 
+    # A report produced under a different rubric cannot be compared against a
+    # fresh judgement. Reading primary scores out of such a report and judging
+    # with the current anchors makes the difference between two rubrics look
+    # like a disagreement between two judges. That mistake cost one wasted
+    # measurement here before this check existed.
+    sys.path.insert(0, str(ROOT / "evals"))
+    from layer3_judge import rubric_fingerprint
+
+    current = rubric_fingerprint(rubric)
+    recorded = report.get("rubric_fingerprint")
+    if recorded is None:
+        print(f"FATAL: {args.report.name} records no rubric_fingerprint, so it "
+              "cannot be shown to have been scored against the current anchors.\n"
+              "       Re-generate it:\n"
+              "         python evals/layer3_judge.py --backend openai_compatible "
+              "--split all --seeds 3 --json <report>", file=sys.stderr)
+        return 2
+    if recorded != current:
+        print(f"FATAL: {args.report.name} was scored against rubric "
+              f"{recorded}, but the current rubric is {current}.\n"
+              "       Comparing them would measure the rubric change, not "
+              "judge agreement. Re-generate the report first.", file=sys.stderr)
+        return 2
+
     judge = SecondJudge(
         env.get("LLM_MODEL", "openai/gpt-oss-120b"),
         "https://api.groq.com/openai/v1",

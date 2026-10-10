@@ -159,8 +159,8 @@
         }
       },
       {
-        "key": "impact",
-        "label": "Impact legibility",
+"key": "impact",
+        "label": "Impact and outcome",
         "weight": 0.2353,
         "anchors": {
           "0": "No discernible outcome; describes a task only.",

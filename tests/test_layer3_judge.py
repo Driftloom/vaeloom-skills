@@ -415,6 +415,51 @@ def test_unknown_backend_is_rejected() -> None:
 # â”€â”€ determinism and variance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
+def test_rubric_fingerprint_changes_when_any_anchor_changes(spec) -> None:
+    """The fingerprint is what makes a stale report detectable.
+
+    A report that does not record its rubric cannot be compared against one
+    produced under a different rubric: the inter-judge tool re-judges with the
+    current anchors and reads primary scores out of a report generated under
+    older ones, then reports the difference between two rubrics as a
+    disagreement between two judges. That mistake produced a false 0.00
+    agreement reading for `agency` before this existed.
+    """
+    rubric = spec["rubric"]
+    before = layer3.rubric_fingerprint(rubric)
+
+    assert before == layer3.rubric_fingerprint(json.loads(json.dumps(rubric))), \
+        "the same rubric must fingerprint identically"
+
+    for criterion in rubric["criteria"]:
+        if criterion["key"] != "impact":
+            continue
+        original = criterion["anchors"]["5"]
+        criterion["anchors"]["5"] = "An outcome is gestured at but not specified at all."
+        assert layer3.rubric_fingerprint(rubric) != before, (
+            "rewording a single anchor must change the fingerprint"
+        )
+        criterion["anchors"]["5"] = original
+
+    assert layer3.rubric_fingerprint(rubric) == before, "restore must round-trip"
+
+
+def test_rubric_fingerprint_ignores_disabled_criteria(spec) -> None:
+    """Disabled criteria are excluded from scoring, so they must not move the
+    fingerprint -- otherwise editing a disabled criterion would spuriously
+    invalidate every committed report."""
+    rubric = json.loads(json.dumps(spec["rubric"]))
+    before = layer3.rubric_fingerprint(rubric)
+    for criterion in rubric["criteria"]:
+        if criterion["weight"] == 0:
+            criterion["anchors"] = {"0": "completely different disabled text"}
+    assert layer3.rubric_fingerprint(rubric) == before
+
+
+def test_report_records_the_rubric_it_was_scored_against(spec) -> None:
+    assert layer3.rubric_fingerprint(spec["rubric"]), "fingerprint must not be empty"
+
+
 def test_stub_run_is_deterministic() -> None:
     rubric = json.loads(TASKS_PATH.read_text(encoding="utf-8"))["rubric"]
     spec_data = json.loads(TASKS_PATH.read_text(encoding="utf-8"))

@@ -102,9 +102,9 @@ python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report
 
 | | 1 seed | 3 seeds | shift |
 |---|---|---|---|
-| `resume-bullet-writer` | 7.94 | 7.94 | 0.00 |
+| `resume-bullet-writer` | 6.11 | 6.11 | 0.00 |
 | `resume-quantifier` | 6.47 | 6.47 | 0.00 |
-| **Overall** | **7.21** | **7.21** | **0.00** |
+| **Overall** | **6.29** | **6.29** | **0.00** |
 
 The two runs agree exactly. That is the reproducibility check working as intended
 at `temperature 0.0`, not two independent samples — see the note below on why
@@ -127,13 +127,16 @@ would report.
 ### `--seeds` at temperature 0.0 is a reproducibility check, not a variance sample
 
 The live judge runs at `temperature: 0.0`, so the same input returns the same score.
-On the pre-fix run, 1 of 24 judgements moved and the per-seed means were
-`[5.44, 5.74, 5.74]` and `[3.38, 3.68, 3.68]`; post-fix they are constant at
-`[7.94, 7.94, 7.94]` and `[6.47, 6.47, 6.47]`. So the seeds confirm the harness is
-repeatable; they do **not** sample the judge's distribution.
-`--judge-temperature > 0` exists so that measurement is available when it is
-wanted, and `test_judge_temperature_is_carried_into_the_request` pins that the
-flag reaches the request rather than being a constant.
+The per-seed skill means are `[6.11, 6.11, 6.11]` and `[6.47, 6.47, 6.47]` — no
+criterion moves at all. So the seeds confirm the harness is repeatable; they do
+**not** sample the judge's distribution. `--judge-temperature > 0` exists so that
+measurement is available when it is wanted, and
+`test_judge_temperature_is_carried_into_the_request` pins that the flag reaches
+the request rather than being a constant.
+
+The between-skill gap is now **0.37** with a seed swing of `0.0`. That is far too
+small to rank two skills on 10 tasks, and the ordering reversed when the `agency`
+anchors tightened — which is why no ordering is asserted anywhere in this project.
 
 An earlier revision of this document claimed a single seed understated fabrication
 (`7.35` against `5.64`). That was a genuine observation, but it was an artefact of
@@ -235,56 +238,84 @@ python evals/layer3_interjudge.py --out layer3-interjudge.json
 | | before | after |
 |---|---|---|
 | judgements compared | 30 | 30 |
-| exact agreement | 15/30 (50%) | **26/30 (86%)** |
-| mean absolute difference | 3.33 / 10 | **0.83 / 10** |
+| exact agreement | 15/30 (50%) | **22/30 (73%)** |
+| mean absolute difference | 3.33 / 10 | **1.83 / 10** |
 | worst difference | 10 | 10 |
 
 | Criterion | before | after |
 |---|---|---|
 | `truthfulness` | 1.00 | 1.00 |
-| `impact` | 2.00 | **1.50** |
-| `agency` | **7.00** | **0.00** |
+| `impact` | 2.00 | 2.00 |
+| `agency` | **7.00** | **2.50** |
 
-`agency` reached exact agreement on all ten judgements. Both failure patterns
-collapsed:
+`agency` improved from 7.00 to 2.50 and both original failure modes are fixed:
 
-- The four refusals (`"I don't have figures for this one—send me…"`) score `0`
-  from **both** judges, where they previously scored 0 and 10. The old 10 anchor
-  read *"the actor and the action are unambiguous in the first clause"*, and a
-  polite request for figures satisfies that literally: the actor is `I` and the
-  action is `send me`. It is not an achievement.
-- The six achievement bullets score `10` from **both** judges, where they
-  previously scored 10 and 5. The old 5 anchor said *"agency is implied but not
-  stated"*, and every one of these omits the subject — which is how resume
-  convention works. The anchor was punishing the convention, not a defect.
+- A refusal (`"I don't have figures for this one—send me…"`) no longer scores 10
+  for agency under either judge. The old 10 anchor read *"the actor and the action
+  are unambiguous in the first clause"*, and a polite request satisfies that
+  literally: the actor is `I`, the action is `send me`. It is not an achievement.
+- A conventional achievement bullet no longer gets capped at 5. The old 5 anchor
+  read *"agency is implied but not stated"*, and every resume bullet omits the
+  subject by convention. The anchor was punishing the convention, not a defect.
 
 The rewritten anchors separate three things the old ones conflated: whether the
 output is an achievement at all, whether the actor is obscured, and whether
 ownership is unmistakable given that the subject is conventionally omitted.
 
-### This result is partly circular, and that matters
+### An earlier version of this section reported a false 0.00
 
-These anchors were written **after reading the ten disagreements they then
-reproduce**. Re-running the same ten judgements and getting perfect agreement is
-substantially anchor-fitting, not generalization, and it should not be read as
-evidence that the rubric is calibrated.
+An intermediate revision of this document claimed `agency` reached **0.00** —
+perfect agreement on all ten judgements — and 86% overall. **That measurement was
+wrong and the claim is retracted.**
 
-What is *not* circular is the diagnosis. The two failure modes were identifiable
-without the new anchors as defects on their own terms: a refusal scoring 10 for
-agency is wrong under any anchor set, and an anchor that caps every conventional
-resume bullet at 5 is measuring the wrong thing. The fix encodes those two
-observations. What still requires evidence is that the new anchors hold on
-judgements neither of us has looked at.
+`evals/layer3_interjudge.py` re-judges with the *current* anchors but reads the
+primary judge's scores out of a report generated under the *previous* anchors.
+The divergence it reported was therefore the difference between two rubrics, not
+between two judges. The new agency anchors happened to reproduce exactly what the
+old ones had produced, so primary and second agreed by coincidence.
+
+Re-measured with both sides on the same rubric, `agency` is **2.50**, not 0.00.
+The rewrite was still worth doing — 7.00 → 2.50, and overall 50% → 73% — but it
+was credited with a result it did not produce.
+
+The report did not record which rubric produced its scores, so nothing could
+detect this. `evals/layer3_judge.py` now stamps a `rubric_fingerprint` into every
+report, and `layer3_interjudge.py` **exits 2** rather than compare across rubrics.
+`tests/test_layer3_staleness_guard.py` covers both rejections and asserts that
+both committed reports match the shipped rubric — it caught the 1-seed report
+stale on the first run.
+
+### `impact` was rewritten, measured, and reverted
+
+Its anchors looked equally conflated, and the primary judge was self-inconsistent
+on identical input — it gave one placeholder bullet a 5 and three others 0. A
+rewrite was implemented and measured against the acceptance criterion:
+
+| config | agreement | mean \|delta\| | agency | impact | truthfulness |
+|---|---|---|---|---|---|
+| `impact` old | 73% | **1.83** | 2.50 | 2.00 | 1.00 |
+| `impact` new | 73% | 2.00 | 2.50 | **1.50** | **2.00** |
+
+The new `impact` anchors moved `impact` down 0.50 but pushed `truthfulness` up
+1.00, and the composite got worse. They also caused refusals to score 5 — the new
+5 anchor described a request for figures as "names what changed but leaves the
+value unsupplied". Reverted. A criterion is not improved because its own number
+moved in the right direction.
 
 ### What remains open
 
 | Criterion | mean \|delta\| | note |
 |---|---|---|
-| `impact` | 1.50 | now the weakest, same directional bias: the primary judge reads it as *"was a metric present"* and scores placeholder bullets 0 where the second scores 5 |
-| `truthfulness` | 1.00 | one 10-point flip remains, and it is the second judge that is wrong — it read `[N]% to [M]%` as a claim rather than a marked blank |
+| `agency` | 2.50 | the disagreement is now direction: primary reads placeholder scaffolding as unstated agency (0) where the second reads it as unmistakable (10) |
+| `impact` | 2.00 | primary reads it as *"was a metric present"*; second reads the placeholder as a named-but-unspecified outcome |
+| `truthfulness` | 1.00 | one 10-point flip remains, and there it is the second judge that is wrong — it read `[N]% to [M]%` as a claim rather than a marked blank |
 
-`impact` is the next candidate for the same treatment. It has **not** been
-redesigned here: that would be a second bounded change with its own review.
+All three disagreements now point at the same root: **the rubric has no shared
+understanding of what a placeholder is worth.** `truthfulness` treats marking a
+blank as correct behaviour, `agency` and `impact` treat the resulting
+missing-number as a defect. Rather than tune three anchors independently, the
+next change should state once, in the rubric, how a placeholder is scored across
+criteria. That is a design question, not a third round of anchor editing.
 
 This remains the largest calibration gap and it is **not** closed. What exists
 now is the measurement of it, so the ambiguity is a known number rather than an

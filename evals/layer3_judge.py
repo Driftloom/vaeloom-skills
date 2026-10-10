@@ -49,6 +49,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -444,6 +445,23 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
     }
 
 
+def rubric_fingerprint(rubric: dict) -> str:
+    """Identify the exact rubric a report was scored against.
+
+    A report that does not record its rubric cannot be compared against one
+    produced under a different rubric. That failure is silent: the inter-judge
+    tool re-judges with the current anchors and reads the primary scores out of
+    a report generated under older ones, then reports the difference between
+    fresh numbers and stale ones as a disagreement between judges.
+    """
+    payload = json.dumps(
+        {c["key"]: c["anchors"] for c in rubric["criteria"]
+         if c.get("enabled", True) and c["weight"] > 0},
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--backend", default="stub",
@@ -535,8 +553,14 @@ def main() -> int:
         print("  For a real number, select a live backend and provide credentials.")
         print("-" * 76)
         if args.json:
-            args.json.write_text(json.dumps({"synthetic": True, "results": results}, indent=2),
-                                 encoding="utf-8")
+            args.json.write_text(
+                json.dumps({
+                    "synthetic": True,
+                    "rubric_fingerprint": rubric_fingerprint(spec["rubric"]),
+                    "results": results,
+                }, indent=2),
+                encoding="utf-8",
+            )
             print(f"report written to {args.json}")
         return 0
 
@@ -595,6 +619,7 @@ def main() -> int:
                 {
                     "synthetic": False,
                     "backend": backend.name,
+                    "rubric_fingerprint": rubric_fingerprint(spec["rubric"]),
                     "judge_temperature": args.judge_temperature,
                     "fabrication": {
                         "vetoed_tasks": vetoed,
