@@ -596,9 +596,46 @@ class TestPlaceholderEvidenceIsShownToTheJudge:
         )
         assert "placeholders: 2 total, 0 named, 2 scaffolding" in prompt
 
+    def test_the_placeholders_line_is_exactly_the_counts_and_nothing_else(self):
+        """The whole line is pinned, not a fragment of it.
+
+        A substring assertion still passes when an instruction is appended to the
+        counts, which is the exact leak this work exists to prevent. The expected
+        line is built from the evidence dict the prompt was built with, so a
+        prompt that hardcoded the numbers or reordered them fails here too.
+
+        The input carries one scaffolding and one named placeholder on purpose:
+        that makes the three counts distinct, so none of them can pass by
+        coincidence.
+        """
+        text = "improving [X] by [end-to-end cycle time]"
+        evidence = layer3.mechanical_evidence(text, {"must_not_fabricate": False})
+        prompt = layer3.build_prompt(
+            task={"input": "x", "judge_question": "q"},
+            criterion={"key": "impact", "label": "Impact", "anchors": {}},
+            evidence=evidence,
+            candidate=text,
+        )
+        line = next(
+            row for row in prompt.splitlines()
+            if row.strip().startswith("placeholders:")
+        )
+        counts = evidence["placeholders"]
+        assert line.strip() == (
+            f"placeholders: {counts['total']} total, "
+            f"{counts['named']} named, "
+            f"{counts['scaffolded']} scaffolding"
+        )
+
     def test_prompt_contains_no_cap_instruction(self):
-        """The prompt must not tell the judge what score to give. If it did, the
-        cap would live in the prompt only and the judge could ignore it."""
+        """Secondary net: no scoring instruction anywhere in the prompt.
+
+        The line assertion above carries the load, because it catches any
+        wording at all. This one covers the leaks it cannot see -- an instruction
+        appended to the judge header, the anchors or the closing sentence, where
+        the placeholders line is untouched and the equality check has nothing to
+        say.
+        """
         prompt = layer3.build_prompt(
             task={"input": "x", "judge_question": "q"},
             criterion={"key": "impact", "label": "Impact", "anchors": {}},
@@ -608,7 +645,10 @@ class TestPlaceholderEvidenceIsShownToTheJudge:
             candidate="improving [X] by [Y]",
         )
         lowered = prompt.lower()
-        for forbidden in ("do not exceed", "cap", "maximum score", "at most"):
+        for forbidden in (
+            "do not exceed", "cap", "maximum score", "at most",
+            "do not score above", "do not score higher", "score no higher",
+        ):
             assert forbidden not in lowered, (
                 f"prompt leaks scoring instruction {forbidden!r}"
             )
