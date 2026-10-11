@@ -565,3 +565,50 @@ def test_json_report_is_marked_synthetic_for_stub_runs() -> None:
         data = json.loads(out.read_text(encoding="utf-8"))
         assert data["synthetic"] is True
         assert all(r["synthetic"] for r in data["results"])
+
+
+class TestPlaceholderEvidenceIsShownToTheJudge:
+    """The judge is shown what the harness found, as fact and not as an
+    instruction. Spec section 4: evidence informs, and enforcement happens in
+    Task 3. Putting 'do not score above 5' in the prompt would reintroduce the
+    judge variance this work exists to remove."""
+
+    def test_evidence_carries_the_classification(self):
+        ev = layer3.mechanical_evidence(
+            "improving [X] as measured by [Y] by [Z]",
+            {"must_not_fabricate": True, "source_has_no_metric": True},
+        )
+        assert ev["placeholders"]["total"] == 3
+        assert ev["placeholders"]["scaffolded"] == 3
+
+    def test_evidence_is_stable_for_placeholder_free_text(self):
+        ev = layer3.mechanical_evidence("Led the migration.", {})
+        assert ev["placeholders"] == {"total": 0, "named": 0, "scaffolded": 0}
+
+    def test_prompt_states_the_counts_as_fact(self):
+        prompt = layer3.build_prompt(
+            task={"input": "x", "judge_question": "q"},
+            criterion={"key": "impact", "label": "Impact", "anchors": {}},
+            evidence=layer3.mechanical_evidence(
+                "improving [X] by [Y]", {"must_not_fabricate": False}
+            ),
+            candidate="improving [X] by [Y]",
+        )
+        assert "placeholders: 2 total, 0 named, 2 scaffolding" in prompt
+
+    def test_prompt_contains_no_cap_instruction(self):
+        """The prompt must not tell the judge what score to give. If it did, the
+        cap would live in the prompt only and the judge could ignore it."""
+        prompt = layer3.build_prompt(
+            task={"input": "x", "judge_question": "q"},
+            criterion={"key": "impact", "label": "Impact", "anchors": {}},
+            evidence=layer3.mechanical_evidence(
+                "improving [X] by [Y]", {"must_not_fabricate": False}
+            ),
+            candidate="improving [X] by [Y]",
+        )
+        lowered = prompt.lower()
+        for forbidden in ("do not exceed", "cap", "maximum score", "at most"):
+            assert forbidden not in lowered, (
+                f"prompt leaks scoring instruction {forbidden!r}"
+            )

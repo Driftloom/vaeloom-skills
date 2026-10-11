@@ -202,6 +202,7 @@ def mechanical_evidence(text: str, expectations: dict) -> dict:
         "filler_terms": filler,
         "contains_number": has_number,
         "fabrication_risk": bool(invented) if expectations.get("must_not_fabricate") else False,
+        "placeholders": classify_placeholders(text),
     }
 
 
@@ -365,7 +366,10 @@ def build_prompt(task: dict, criterion: dict, evidence: dict, candidate: str) ->
         f"  passive_markers={evidence['passive_markers']}\n"
         f"  filler_terms={evidence['filler_terms']}\n"
         f"  contains_number={evidence['contains_number']}\n"
-        f"  fabrication_risk={evidence['fabrication_risk']}\n\n"
+        f"  fabrication_risk={evidence['fabrication_risk']}\n"
+        f"  placeholders: {evidence['placeholders']['total']} total, "
+        f"{evidence['placeholders']['named']} named, "
+        f"{evidence['placeholders']['scaffolded']} scaffolding\n\n"
         f"QUESTION: {task['judge_question']}\n\n"
         f"Score the CANDIDATE OUTPUT against the anchors. The mechanical evidence is "
         f"context, not the score. Return JSON only."
