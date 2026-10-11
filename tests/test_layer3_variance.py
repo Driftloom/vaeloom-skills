@@ -152,6 +152,106 @@ class TestAnalyserAgreesWithTheHarnessOnCaps:
         assert a["unvetoed_means"]["s"] == pytest.approx(9.0, abs=0.01)
 
 
+class TestSeedScoresApplyTheCap:
+    """The per-seed view is a second reading of the same scored report.
+
+    It exists to measure seed-to-seed swing, and the swing it reported was
+    computed from raw judge samples. A task the harness capped at 5.0 therefore
+    read 10.0 here, and this module -- the gate on the signal-versus-noise
+    claims -- was reporting a number its own harness never emitted.
+    """
+
+    def _task(self, text, *, vetoed=False, capped=True):
+        task = make_task("t1", [10] * 3, [10] * 3, [10] * 3, vetoed=vetoed)
+        task["candidates"] = {str(s): text for s in range(3)}
+        task["fabrication_by_seed"] = {str(s): False for s in range(3)}
+        if capped:
+            # A capped report carries mean_capped on every criterion; a pre-cap
+            # report carries none at all. That is what separates the two, and
+            # the cap is applied only to the former.
+            for key in WEIGHTED:
+                task["criteria"][key]["mean_capped"] = 10.0
+            task["criteria"]["impact"]["mean_capped"] = 5.0
+        return task
+
+    def _result(self, task):
+        return {"tasks": [task]}
+
+    def test_a_capped_task_does_not_read_ten_per_seed(self):
+        """Judge said 10 on every sample and the output carries a placeholder.
+
+        The harness totals this at 0.5*10 + 0.3*10 + 0.2*5 = 9.0, and impact is
+        capped to 5 because of [N]. Reading 10.0 per seed here is the defect.
+        """
+        text = "cut cycle time by [N] days"
+        result = self._result(self._task(text))
+        got = seed_scores(result, 3)
+        capped_total = sum(
+            c["mean_capped"] * c["weight"]
+            for c in result["tasks"][0]["criteria"].values() if c["weight"] > 0
+        )
+        assert capped_total == 9.0
+        for score in got:
+            assert score <= capped_total, (got, capped_total)
+        assert got == [9.0, 9.0, 9.0]
+
+    def test_a_clean_task_is_untouched_by_the_cap(self):
+        """The cap must not lower a score that was never capped. A placeholder-
+        free output totals 10.0 and has to keep reading 10.0 per seed."""
+        got = seed_scores(self._result(self._task("Led the migration.")), 3)
+        assert got == [10.0, 10.0, 10.0]
+
+    def test_a_named_placeholder_leaves_agency_alone(self):
+        """[N] and [M] are named, so agency keeps full marks and only impact is
+        capped. Both halves of the cap rule have to survive into this reading."""
+        got = seed_scores(
+            self._result(self._task("improving completion rates from [N]% to [M]%")),
+            3,
+        )
+        # 0.5*10 + 0.3*10 (agency uncapped) + 0.2*5 (impact capped)
+        assert got == [9.0, 9.0, 9.0]
+
+    def test_scaffolding_caps_agency_too(self):
+        got = seed_scores(
+            self._result(self._task("improving [X] as measured by [Y] by [Z]")),
+            3,
+        )
+        # 0.5*10 (truthfulness uncapped) + 0.3*5 + 0.2*5
+        assert got == [7.5, 7.5, 7.5]
+
+    def test_the_veto_still_wins_over_the_cap(self):
+        """A fabricating task reads 0.0, not 9.0. The cap is a ceiling on a
+        criterion; the veto is a stronger claim about the whole task."""
+        got = seed_scores(
+            self._result(self._task("cut cycle time by [N] days", vetoed=True)), 3
+        )
+        assert got == [0.0, 0.0, 0.0]
+
+    def test_a_pre_cap_report_is_still_analysed_uncapped(self):
+        """The committed reports predate the caps and carry no mean_capped, even
+        though their candidates contain placeholders. Analysing them with the cap
+        applied would report numbers their harness never produced."""
+        result = self._result(self._task("cut cycle time by [N] days", capped=False))
+        assert seed_scores(result, 3) == [10.0, 10.0, 10.0]
+
+    def test_the_cap_is_worst_case_across_seeds(self):
+        """Seed 0 clean, seed 1 scaffolded: every seed is capped. Applying the
+        cap from seed 0 alone would leave seeds 0 and 2 reading 10.0, which is
+        the escape the harness aggregation was changed to fix."""
+        task = self._task("Led the migration.")
+        task["candidates"]["1"] = "improving [X] as measured by [Y] by [Z]"
+        got = seed_scores(self._result(task), 3)
+        assert got == [7.5, 7.5, 7.5]
+
+    def test_a_task_with_no_candidates_is_uncapped_not_an_error(self):
+        """A minimal fixture has no per-seed text to classify, so no cap. It
+        reads uncapped rather than raising, which is the safe direction: the
+        seed-to-seed swing is still measurable."""
+        task = self._task("cut cycle time by [N] days")
+        del task["candidates"]
+        assert seed_scores(self._result(task), 3) == [10.0, 10.0, 10.0]
+
+
 class TestSignalVersusNoise:
     def test_large_gap_is_supported(self):
         a = analyse(make_report([

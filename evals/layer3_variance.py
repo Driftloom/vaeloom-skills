@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import statistics as st
+import sys
 from pathlib import Path
 
 # Criteria that carry weight. Disabled ones are excluded from every mean.
@@ -44,15 +45,96 @@ def weighted_criteria(result: dict) -> list[str]:
     return sorted(keys)
 
 
+def _cap_helpers():
+    """The harness's own cap functions, imported rather than reimplemented.
+
+    A local copy of the cap rule here is precisely the drift this module exists
+    to catch: the analyser would go on reporting numbers the harness never
+    emitted, and the gate would certify a disagreement it had created.
+    """
+    evals = str(Path(__file__).resolve().parent)
+    if evals not in sys.path:
+        sys.path.insert(0, evals)
+    from layer3_judge import (
+        apply_placeholder_cap, classify_placeholders, worst_case_placeholders,
+    )
+    return apply_placeholder_cap, classify_placeholders, worst_case_placeholders
+
+
+def report_is_capped(result: dict) -> bool:
+    """Whether a harness with the placeholder caps produced these scores.
+
+    Every capped report carries mean_capped on every criterion and no pre-cap
+    report carries it at all, so its presence is an exact marker. A report that
+    predates the caps must be analysed uncapped: re-deriving the cap for it would
+    report numbers its own harness never emitted, which is the disagreement this
+    module is the gate against.
+    """
+    return any(
+        "mean_capped" in crit
+        for task in result["tasks"]
+        for crit in task["criteria"].values()
+    )
+
+
+def task_placeholders_by_seed(task: dict) -> dict:
+    """The harness's own per-seed placeholder classification, from the report.
+
+    A report stores each seed's generated text but not its classification, so it
+    is recomputed with the harness's own classifier over that text. The result is
+    identical to what the harness computed, because classify_placeholders is a
+    pure function of the text and reads none of the task's expectations.
+
+    A task carrying no candidates yields nothing, which worst_case_placeholders
+    then reads as "no placeholders" -- so a minimal fixture is simply uncapped
+    rather than an error.
+    """
+    _, classify_placeholders, _ = _cap_helpers()
+    out = {}
+    for seed, text in (task.get("candidates") or {}).items():
+        try:
+            out[int(seed)] = classify_placeholders(text)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def seed_scores(result: dict, seeds: int) -> list[float]:
-    """The skill's mean score computed one seed at a time."""
+    """The skill's mean score computed one seed at a time.
+
+    Each seed's criterion sample passes through the placeholder cap first, so a
+    task the harness capped at 5.0 cannot read 10.0 here. Without that this
+    reported per-seed scores the harness never produced, and the seed-to-seed
+    swing that drives the signal-versus-noise verdict was computed against a
+    number that does not exist.
+
+    The classification is worst-case across seeds, as in the harness, so the cap
+    a seed is subject to is the one the harness would have applied to it. A cap
+    computed per seed in isolation would let a clean generation escape a
+    scaffolded sibling, which is the same defect the harness aggregation was
+    changed to fix.
+
+    The veto still wins: a fabricating task reads 0.0 whatever the cap produced,
+    because one fabricating generation out of three is meant to zero the task.
+    """
+    apply_placeholder_cap, _, worst_case_placeholders = _cap_helpers()
     keys = weighted_criteria(result)
+    capped_report = report_is_capped(result)
     out = []
     for i in range(seeds):
         per_task = []
         for task in result["tasks"]:
-            score = sum(task["criteria"][k]["samples"][i] * task["criteria"][k]["weight"]
-                        for k in keys)
+            worst = {"total": 0, "scaffolded": 0}
+            if capped_report:
+                worst = worst_case_placeholders({
+                    s: {"placeholders": p}
+                    for s, p in task_placeholders_by_seed(task).items()
+                })
+            score = sum(
+                apply_placeholder_cap(k, task["criteria"][k]["samples"][i], worst)
+                * task["criteria"][k]["weight"]
+                for k in keys
+            )
             per_task.append(0.0 if task["fabrication_vetoed"] else score)
         out.append(st.mean(per_task) if per_task else 0.0)
     return out
