@@ -14,8 +14,9 @@ LLM_MODEL) -- the same miss as the Layer 3 live run, where an earlier check that
 read only process env vars concluded no keys existed.
 
 Run:  python evals/layer3_interjudge.py [--report layer3-live-s3.json]
-Exit: 0 always. This reports agreement; it does not gate on it. A rubric that
-two judges disagree about is a finding to act on, not a build failure.
+Exit: 0 on a completed comparison, 2 when the report cannot be compared
+against the current rubric or scoring policy. It does not gate on agreement --
+a rubric two judges disagree about is a finding to act on, not a build failure.
 """
 from __future__ import annotations
 
@@ -117,6 +118,65 @@ class SecondJudge:
         return json.loads(match.group(0))["score"]
 
 
+def provenance_problem(report: dict, rubric: dict, report_name: str) -> str | None:
+    """Why this report may not be compared against a fresh judgement, or None.
+
+    Two independent questions, and they fail independently.
+
+    **Rubric.** A report produced under different anchors cannot be compared
+    against one judged with the current ones: the tool would measure the rubric
+    change and report it as judge disagreement. That mistake cost one wasted
+    measurement here before this check existed.
+
+    **Scoring.** A report produced under different scoring *functions* has the
+    same problem one level down, and the rubric check cannot see it -- the caps
+    landed with the anchors untouched, so the two fingerprints that matter
+    disagree while the one being checked matches. Running this check before the
+    caps existed cost a full 30-call comparison and an exit 0 where the honest
+    answer was exit 2.
+
+    Returns the reason rather than raising, so the caller prints it once and
+    exits 2. A test can therefore ask whether a report would be accepted
+    without credentials and without spending a call, which is the only way to
+    test the accept case at all.
+    """
+    sys.path.insert(0, str(ROOT / "evals"))
+    from layer3_judge import rubric_fingerprint, scoring_fingerprint
+
+    current = rubric_fingerprint(rubric)
+    recorded = report.get("rubric_fingerprint")
+    if recorded is None:
+        return (f"{report_name} records no rubric_fingerprint, so it "
+                "cannot be shown to have been scored against the current anchors.\n"
+                "       Re-generate it:\n"
+                "         python evals/layer3_judge.py --backend openai_compatible "
+                "--split all --seeds 3 --json <report>")
+    if recorded != current:
+        return (f"{report_name} was scored against rubric "
+                f"{recorded}, but the current rubric is {current}.\n"
+                "       Comparing them would measure the rubric change, not "
+                "judge agreement. Re-generate the report first.")
+
+    current_scoring = scoring_fingerprint()
+    recorded_scoring = report.get("scoring_fingerprint")
+    if recorded_scoring is None:
+        return (f"{report_name} records no scoring_fingerprint, so it cannot be "
+                "shown to have been scored under the current placeholder caps. "
+                "Matching anchors are not sufficient: the cap and "
+                "classification functions are what turn them into numbers.\n"
+                "       Re-generate it:\n"
+                "         python evals/layer3_judge.py --backend openai_compatible "
+                "--split all --seeds 3 --json <report>")
+    if recorded_scoring != current_scoring:
+        return (f"{report_name} was scored under scoring policy "
+                f"{recorded_scoring}, but the current one is {current_scoring}.\n"
+                "       The anchors are the same, so the rubric fingerprint "
+                "matches; what moved is the code that caps and classifies. "
+                "Comparing them would measure the policy change, not judge "
+                "agreement. Re-generate the report first.")
+    return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--report", type=Path, default=ROOT / "layer3-live-s3.json")
@@ -130,28 +190,9 @@ def main() -> int:
     rubric = spec["rubric"]
     active = [c for c in rubric["criteria"] if c.get("enabled", True) and c["weight"] > 0]
 
-    # A report produced under a different rubric cannot be compared against a
-    # fresh judgement. Reading primary scores out of such a report and judging
-    # with the current anchors makes the difference between two rubrics look
-    # like a disagreement between two judges. That mistake cost one wasted
-    # measurement here before this check existed.
-    sys.path.insert(0, str(ROOT / "evals"))
-    from layer3_judge import rubric_fingerprint
-
-    current = rubric_fingerprint(rubric)
-    recorded = report.get("rubric_fingerprint")
-    if recorded is None:
-        print(f"FATAL: {args.report.name} records no rubric_fingerprint, so it "
-              "cannot be shown to have been scored against the current anchors.\n"
-              "       Re-generate it:\n"
-              "         python evals/layer3_judge.py --backend openai_compatible "
-              "--split all --seeds 3 --json <report>", file=sys.stderr)
-        return 2
-    if recorded != current:
-        print(f"FATAL: {args.report.name} was scored against rubric "
-              f"{recorded}, but the current rubric is {current}.\n"
-              "       Comparing them would measure the rubric change, not "
-              "judge agreement. Re-generate the report first.", file=sys.stderr)
+    problem = provenance_problem(report, rubric, args.report.name)
+    if problem is not None:
+        print(f"FATAL: {problem}", file=sys.stderr)
         return 2
 
     judge = SecondJudge(

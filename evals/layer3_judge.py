@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -633,6 +634,38 @@ def rubric_fingerprint(rubric: dict) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+def scoring_fingerprint() -> str:
+    """Identify the exact scoring policy a report's numbers were produced under.
+
+    `rubric_fingerprint` hashes the anchors, so it is blind to every change to
+    the functions that turn an anchor score into a reported number. The
+    placeholder caps are exactly such a change: they landed with the anchors
+    untouched, and `layer3_interjudge.py` therefore compared a pre-cap report
+    against a post-cap run, completed a full 30-call comparison and exited 0
+    where it should have refused. The report really was stale, and the guard
+    could not see it.
+
+    The function bodies are read from the source rather than restated here, so
+    a branch or a constant added to one of them cannot be forgotten in this
+    list and silently reopen the same hole. The module-level patterns and
+    constants they close over are hashed alongside, because changing a regex is
+    exactly as behavioural as changing a body.
+    """
+    functions = (classify_placeholders, worst_case_placeholders,
+                 apply_placeholder_cap)
+    constants = [
+        PLACEHOLDER_RE.pattern,
+        _FORMULA_VARIABLE_RE.pattern,
+        _MEASURED_BY_RE.pattern,
+        repr(PLACEHOLDER_CAP),
+        repr(sorted(_INSTRUCTION_VERBS)),
+        repr(_WRITER_MARKER),
+        repr(_HEAD_PUNCTUATION),
+    ]
+    payload = "".join(inspect.getsource(fn) for fn in functions) + "".join(constants)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--backend", default="stub",
@@ -743,6 +776,7 @@ def main() -> int:
                 json.dumps({
                     "synthetic": True,
                     "rubric_fingerprint": rubric_fingerprint(spec["rubric"]),
+                    "scoring_fingerprint": scoring_fingerprint(),
                     "results": results,
                 }, indent=2),
                 encoding="utf-8",
@@ -806,6 +840,7 @@ def main() -> int:
                     "synthetic": False,
                     "backend": backend.name,
                     "rubric_fingerprint": rubric_fingerprint(spec["rubric"]),
+                    "scoring_fingerprint": scoring_fingerprint(),
                     "judge_temperature": args.judge_temperature,
                     "fabrication": {
                         "vetoed_tasks": vetoed,

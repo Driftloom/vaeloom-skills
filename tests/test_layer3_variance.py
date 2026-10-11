@@ -5,12 +5,15 @@ these tests pin the cases where it must refuse to confirm a difference.
 """
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 from evals.layer3_judge import evaluate_skill
 from evals.layer3_variance import (
@@ -551,6 +554,113 @@ class TestMixedRecordingIsRefused:
         result = self._two_task_result()
         result["tasks"] = []
         assert seed_scores(result, 3) == [0.0, 0.0, 0.0]
+
+
+class TestCrossSkillMixingIsRefused:
+    """A report whose skills were not all scored by the same model is refused.
+
+    `TestMixedRecordingIsRefused` settles the malformation inside one skill.
+    One level up it survives that check entirely: each skill is internally
+    consistent, and it is only the comparison *between* them that is wrong.
+    The blended number is `between_skill_gap`, which is what
+    `ordering_supported` and `gap_over_swing` are read from -- so the blend
+    decides whether this report claims a ranking.
+
+    Defensive like its per-skill counterpart: `evaluate_skill` writes the field
+    on every task of a result or on none, so a report it produced cannot reach
+    this. It is here for a report edited, merged or trimmed into that shape.
+    """
+
+    def _two_skill_report(self, *, recorded: bool):
+        """Two skills from one real harness run, so the mixed shape starts from
+        a report the harness could actually have written."""
+        result = TestMixedRecordingIsRefused()._two_task_result()
+        other = json.loads(json.dumps(result))
+        result["skill"] = "resume-bullet-writer"
+        other["skill"] = "resume-quantifier"
+        if not recorded:
+            for task in other["tasks"]:
+                del task["score_by_seed"]
+                task["candidates"] = {
+                    s: "Led the migration." for s in (0, 1, 2)}
+        else:
+            for task in other["tasks"]:
+                task["candidates"] = {
+                    s: "cut cycle time by [N] days" for s in (0, 1, 2)}
+        return {"backend": "b", "synthetic": False,
+                "results": [result, other]}
+
+    def test_one_skill_recorded_and_one_not_is_refused(self):
+        report = self._two_skill_report(recorded=False)
+        # Precondition: each skill passes its own per-skill check, which is
+        # precisely why the blend is invisible without a report-level check.
+        assert seed_scores(report["results"][0], 3) == [5.0, 5.0, 5.0]
+        assert seed_scores(report["results"][1], 3) == [10.0, 10.0, 10.0]
+        with pytest.raises(CapsNotReproducible) as exc:
+            analyse(report)
+        message = str(exc.value)
+        assert "1 of 2 skills" in message
+        assert "resume-bullet-writer" in message
+        assert "resume-quantifier" in message
+
+    def test_the_blend_would_have_produced_a_gap(self):
+        """The refusal has to be worth making: show the wrong number it stops.
+
+        Both skills ran the same tasks with the same judge. The recorded one is
+        read at 5.0 per seed, because that is what the harness computed under
+        the caps; the unrecorded one is recomputed at 10.0 per seed, because its
+        placeholder text was edited away in the trim. A gap between those two
+        numbers is a difference between scoring models, not between skills.
+        """
+        report = self._two_skill_report(recorded=False)
+        assert [t["score"] for t in report["results"][0]["tasks"]] == [5.0, 5.0]
+        assert [t["score"] for t in report["results"][1]["tasks"]] == [5.0, 5.0]
+        harness_model = st_mean(seed_scores(report["results"][0], 3))
+        recomputed_model = st_mean(seed_scores(report["results"][1], 3))
+        assert harness_model == 5.0
+        assert recomputed_model == 10.0, (
+            "precondition: the two models must disagree, or the refusal "
+            "protects against nothing"
+        )
+
+    def test_a_report_where_every_skill_is_recorded_is_not_refused(self):
+        report = self._two_skill_report(recorded=True)
+        a = analyse(report)
+        assert a["between_skill_gap"] == 0.0
+
+    def test_a_report_where_no_skill_is_recorded_is_not_refused(self):
+        report = self._two_skill_report(recorded=False)
+        for result in report["results"]:
+            for task in result["tasks"]:
+                task.pop("score_by_seed", None)
+                task["candidates"] = {
+                    s: "Led the migration." for s in (0, 1, 2)}
+        assert analyse(report)["between_skill_gap"] == 0.0
+
+    def test_a_single_skill_report_is_never_cross_skill_mixed(self):
+        report = self._two_skill_report(recorded=False)
+        report["results"] = report["results"][:1]
+        assert analyse(report)["skill_means"]["resume-bullet-writer"] == 5.0
+
+    def test_a_skill_that_is_itself_mixed_gets_the_more_specific_message(self):
+        """The per-skill refusal names the tasks, so it must win the tie."""
+        report = self._two_skill_report(recorded=True)
+        del report["results"][0]["tasks"][1]["score_by_seed"]
+        with pytest.raises(CapsNotReproducible) as exc:
+            analyse(report)
+        assert "1 of 2 tasks" in str(exc.value)
+
+    def test_the_cli_reports_the_cross_skill_refusal(self, tmp_path, capsys):
+        report = self._two_skill_report(recorded=False)
+        path = tmp_path / "mixed.json"
+        path.write_text(json.dumps(report), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "evals" / "layer3_variance.py"), str(path)],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        assert proc.returncode == 1, proc.stdout + proc.stderr
+        assert "REFUSING TO ANALYSE" in proc.stderr
+        assert "skills in this report record score_by_seed" in proc.stderr
 
 
 class TestSignalVersusNoise:

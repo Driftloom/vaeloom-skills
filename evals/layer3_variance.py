@@ -20,6 +20,10 @@ saved report, and refuses to answer them any other way:
    which is correct for fabrication but is not the expected fabrication rate.
    Both are reported so they cannot be confused.
 
+Two refusals guard the arithmetic, at report level and at task-set level: a
+report whose skills are not all scored by the same model is refused rather than
+averaged into a `between_skill_gap` that belongs to neither.
+
 Usage:
     python evals/layer3_variance.py layer3-live-s3.json
     python evals/layer3_variance.py report.json --compare other.json
@@ -160,6 +164,65 @@ def _refuse_mixed_recording(result: dict) -> None:
     )
 
 
+def _recording_state(result: dict) -> str:
+    """`recorded`, `unrecorded` or `mixed` for one skill's task set.
+
+    `mixed` is returned rather than resolved here: `_refuse_mixed_recording`
+    already names the offending tasks, which is a better message than anything
+    the report-level check could produce, so a mixed skill is left to it.
+    """
+    tasks = result.get("tasks") or []
+    recorded = sum(1 for t in tasks if t.get("score_by_seed") is not None)
+    if not recorded:
+        return "unrecorded"
+    return "recorded" if recorded == len(tasks) else "mixed"
+
+
+def _refuse_cross_skill_mix(report: dict) -> None:
+    """Refuse a report where one skill is recorded and another is recomputed.
+
+    `_refuse_mixed_recording` settles this inside a single skill. The same
+    malformation one level up blends two skills' means into
+    `between_skill_gap`, which is the number the signal-versus-noise verdict is
+    read from: a gap whose two sides came from different scoring models belongs
+    to neither, and the ratio computed from it looks like an ordinary ratio.
+
+    Each skill passes its own per-skill check first, so this malformation is
+    precisely the one that survives both -- it is only visible once the skills
+    are compared with each other. That is the same shape as the defect this
+    whole branch exists to repair: two places each individually correct, whose
+    composition is a wrong answer nobody computed.
+
+    Defensive, like its per-skill counterpart: `evaluate_skill` writes
+    `score_by_seed` on every task of a result, so a report it produced cannot
+    reach here. It exists so a report edited, merged or trimmed into that shape
+    is refused rather than analysed as a blend.
+
+    A skill that is itself mixed is ignored by the tally and left to
+    `_refuse_mixed_recording`, which can name the tasks. An all-mixed or
+    single-skill report therefore takes the more specific message.
+    """
+    states = {
+        r.get("skill"): _recording_state(r)
+        for r in (report.get("results") or [])
+    }
+    settled = set(states.values()) - {"mixed"}
+    if len(settled) < 2:
+        return
+    recorded = sorted(s for s, v in states.items() if v == "recorded")
+    unrecorded = sorted(s for s, v in states.items() if v == "unrecorded")
+    raise CapsNotReproducible(
+        f"{len(recorded)} of {len(states)} skills in this report record "
+        f"score_by_seed ({', '.join(recorded)}) and {len(unrecorded)} do not "
+        f"({', '.join(unrecorded)}). Each skill passes its own check, but the "
+        "gap between them would then compare the harness's capped-mean model "
+        "against the per-sample model, and that gap belongs to neither. "
+        "Record the field on every skill or on none; if the report is a "
+        "deliberately trimmed subset, drop it from those skills too so the "
+        "analyser recomputes all of them by one rule."
+    )
+
+
 def _task_score_at_seed(task: dict, i: int, keys: list[str], capped_report: bool) -> float:
     """One task's score at seed `i`, preferring the number the harness recorded.
 
@@ -258,6 +321,7 @@ def seed_scores(result: dict, seeds: int) -> list[float]:
 
 def analyse(report: dict) -> dict:
     seeds = report["results"][0]["seeds"]
+    _refuse_cross_skill_mix(report)
     per_skill = {r["skill"]: seed_scores(r, seeds) for r in report["results"]}
 
     pairs = 0

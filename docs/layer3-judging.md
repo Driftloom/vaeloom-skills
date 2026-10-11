@@ -6,7 +6,8 @@ resume bullet.** This layer can, and is the prerequisite for SkillOpt, which
 optimises against exactly this kind of signal.
 
 > **Status: measured live against `gemma4:31b` via `ollama.com/v1`.**
-> Overall **4.78/10** at 3 seeds across 2 skills. **33% of generations fabricate.**
+> Overall **6.30/10** at 3 seeds across 2 skills. **0.0% of generations
+> fabricate** (0 of 30).
 > The anchors are written, not calibrated against human raters, so this is a
 > first reading rather than a baseline. See the two sections below for what the
 > number does and does not support.
@@ -16,6 +17,11 @@ optimises against exactly this kind of signal.
 > **76%** of judgements. On fresh candidates neither judge had seen, agreement
 > was **67%** and `impact` divergence rose to **3.00** — the caps did not
 > generalise.
+>
+> An earlier revision of this header read **4.78/10** and **33% of generations
+> fabricate**, directly above a line stating fabrication was **0.0%**. Neither
+> stale figure matched any committed report; both are retracted here rather
+> than left for a reader to reconcile.
 >
 > A previous revision of this file stated that no provider credentials were
 > configured and that every run was synthetic. That was wrong: the keys live in
@@ -177,13 +183,33 @@ analyser both print the split; `headline_mean_misattributes_fabrication` turns
 the ≥1.0 gap into a flag so no future report can quietly hide it.
 
 That split is now empty, and the current run shows why the flag still earns its
-place. Under the placeholder caps the unvetoed mean for `resume-bullet-writer` is
-**6.25** against an overall of **6.13**, and `resume-quantifier` is **6.47**
-against **6.47** — no vetoes, so the two views cover the same tasks and nothing
-is separated. The figure that is still discriminating is the mechanical one:
-**3.3%** of criterion-task pairs span the full `0`–`10` range across seeds, up
-from 0.0% on the previous run, concentrated in `agency` on placeholder
-scaffolding.
+place. With no vetoes the two views cover the same tasks, so nothing is
+separated: `resume-bullet-writer` reads **6.25** overall and **6.25** unvetoed,
+`resume-quantifier` **6.47** against **6.47**.
+
+Those are the **capped aggregate** — the mean of the task scores, which is what
+`mean_score` holds in the report and what the harness CLI prints as "overall".
+The variance analyser prints a *different* composite for the same report, and
+the two are routinely mistaken for one figure:
+
+| | `resume-bullet-writer` | `resume-quantifier` |
+|---|---|---|
+| **Capped aggregate** (`mean_score`, mean of task scores) | **6.25** | **6.47** |
+| **Per-seed counterfactual** (analyser's `skill_means`: mean of `mean(score_by_seed)`) | **6.13** | **6.47** |
+
+They differ by design. The harness caps a criterion's aggregated mean and then
+averages the task scores; the per-seed view reads one generation at a time
+through the same caps. The first is the number the tasks actually scored; the
+second is the swing between generations. Neither is a decomposition of the
+other, and neither is wrong.
+
+`layer3_interjudge.py` compares a third thing again — raw `samples[0]`, the
+uncapped judge score — and so **cannot see the caps at all**. Every figure in
+the inter-judge tables below is that third view.
+
+The figure that is still discriminating is the mechanical one: **3.3%** of
+criterion-task pairs span the full `0`–`10` range across seeds, up from 0.0% on
+the previous run, concentrated in `agency` on placeholder scaffolding.
 
 `test_vetoed_work_is_reported_separately_from_writing_quality` scores a clean task
 `10.0` and a fabricating task `10.0`, and requires `5.0` overall against `10.0`
@@ -354,15 +380,54 @@ round of anchor editing.
 ### The classification rule
 
 `classify_placeholders` (`evals/layer3_judge.py`) reads each `[...]` span and
-asks one question: **does it occupy a structural slot, or does it name a
-quantity?** It is `scaffolding` when the bracket holds an abstract marker
-(`[X]`, `[N]`, `[M]`, a bare word like `[company]`) or sits in a unit-shaped slot
-immediately after a unit token — `[X]%`, `[N] days`. It is `named` when the
-bracket holds a concrete noun that identifies a specific quantity or entity.
-Classification looks **only** at what is inside the brackets. It never reads
-what follows a placeholder and never reads a token at a distance, because a
-noun's shape alone classified `[time-to-market]` as scaffolding and that
-inference is what misread a real quantity as a blank.
+asks one question: **does this placeholder occupy a structural slot, or is it
+holding a value?** Three triggers make it `scaffolded`, any one is sufficient,
+and **`named` is the default when none fires**:
+
+| # | Trigger | Example |
+|---|---|---|
+| 1 | The contents are a formula variable — `^[XYZxyz]$` | `[X]`, `[Y]`, `[y]` |
+| 2 | The phrase `as measured by` immediately precedes it, ignoring case | `improving throughput as measured by [the metric]` |
+| 3 | The first word is an instruction verb (`insert`, `add`, `describe`, `specify`, `list`, `name`, `fill`, `enter`, `replace`, `provide`, `detail`, `quantify`, `write`, `state`) or is `your`. Punctuation is stripped from both ends of the word first, so `[Insert: the metric]` is recognised. | `[insert specific action]`, `[your e.g. example here]` |
+
+**`named` is the half that does the work.** Scaffolding needs positive evidence
+of a structural slot. A rule that inferred a noun from the *shape* of the
+characters classified `[end-to-end cycle time]`, `[Q3 pipeline value]` and
+`[time-to-market]` as scaffolding — misreading a real quantity as a blank —
+and absence of evidence of a structural slot means the placeholder is holding a
+value, which is the common case.
+
+Only trigger 2 reads surrounding text, and it reads only what **immediately
+precedes** the placeholder — never what follows it, and never at a distance.
+
+Worked examples, each verified against the implementation rather than asserted:
+
+| Output fragment | Verdict | Trigger |
+|---|---|---|
+| `improving completion rates from [N]% to [M]%` | 2 named | none fired |
+| `cutting completion time from [N] to [M] days` | 2 named | none fired |
+| `reducing manual effort by [N] hours per week` | 1 named | none fired — `by` is **not** a trigger |
+| `cut cycle time by [N] days` | 1 named | none fired — `by` is **not** a trigger |
+| `reduced [N]% to [M]%` | 2 named | none fired — **no unit-shaped-slot trigger exists** |
+| `reduced [N] days` | 1 named | none fired, for the same reason |
+| `[N]`, `[M]`, `[company]`, `[budget]`, `[end-to-end cycle time]` | 1 named | none fired — a bare letter is not a formula variable, and a noun's shape is not evidence |
+| `[metric, e.g. 30%]` | 1 named | containment of `e.g.` is not a trigger |
+| `improving [X] as measured by [Y] by [Z]` | 3 scaffolded | `[X]`/`[Y]`/`[Z]` are formula variables; `as measured by` also fires |
+| `reduced [X]%` | 1 scaffolded | `[X]` is a formula variable — the `%` is irrelevant |
+| `reduced spend by 15-20% through [insert specific action]` | 1 scaffolded | writer instruction |
+| `Led the migration of the legacy warehouse` | 0 placeholders | — |
+
+Two rows here are the ones most likely to be read the other way, and both
+deliberate. There is **no** trigger for a placeholder sitting in a unit-shaped
+slot: `[X]%` is scaffolding only because `[X]` is a formula variable, and
+`[N] days` is named because nothing about it is structural — the `%` and the
+`days` are not read. And a placeholder directly after a bare `by` is **not**
+scaffolding; an earlier draft said it was, which contradicted its own worked
+examples, since `"cut cycle time by [N] days"` and `"reducing manual effort by
+[N] hours per week"` are the same construction and differ only in base verb
+versus gerund. That clause was written for the XYZ case `"...by [Z]"`, which
+trigger 1 already catches, so it contributed no true positives and a false one
+on every legitimate `by [N] <unit>`.
 
 Every generation is classified, the counts are shown to the judge, and
 `worst_case_placeholders` folds the per-seed counts with a **max per field, not
@@ -391,21 +456,53 @@ number for a capped report.
 ### What the caps actually did
 
 **The fabrication rate is the load-bearing number and it held: 0/30 = 0.0%**
-(0 of 10 tasks). The caps did not push the model into avoiding placeholders
-rather than filling them honestly — the transcripts still show the same
-placeholder-plus-request behaviour, and both sourced-number tasks still score
-10.0. Had this gone the other way it would have been the one outcome in this
-plan that must not be committed.
+(0 of 10 tasks). The caps **cannot move it either way** — the veto reads the
+candidate with placeholders stripped out, so whether a digit was invented is
+settled before any cap runs. The caps also did not push the model into
+avoiding placeholders rather than filling them honestly: the transcripts still
+show the same placeholder-plus-request behaviour, and both sourced-number tasks
+still score 10.0. Had this gone the other way it would have been the one outcome
+in this plan that must not be committed.
 
-On the like-for-like re-run, the caps **barely bit**. Of 40 criterion entries,
-**exactly one** changed value: `rbw-held-01` `agency`, 6.67 → 5.0. The
-composite was not expected to rise (spec §4.1, D4) and it did not.
+Recomputing `layer3-live-s3.json` with the caps removed is exactly
+like-for-like — same tasks, same judge scores, one variable — and it is not the
+same as re-running the generator, which is not byte-stable (see "The
+determinism claim in this document no longer holds as written"). On that
+recomputation the caps **barely bit**. Of 40 criterion entries, **exactly one**
+changed value: `rbw-held-01` `agency`, 6.67 → 5.0. Every score below is for
+`resume-bullet-writer`, which carried placeholders in all four of its tasks;
+`resume-quantifier` generated none in any of its ten, so no cap could reach it.
 
-| | before caps | after caps |
-|---|---|---|
-| `resume-bullet-writer` | 6.10 | **6.13** |
-| `resume-quantifier` | 6.47 | **6.47** |
-| fabrication (per generation) | 0.0% | **0.0%** |
+| composite | before caps | after caps | change |
+|---|---|---|---|
+| capped aggregate | 6.38 | **6.25** | −0.13 |
+| per-seed counterfactual | 6.37 | **6.13** | −0.24 |
+| `resume-quantifier`, either composite | 6.47 | **6.47** | 0.00 |
+
+Both "before" figures are **counterfactuals recomputed from
+`layer3-live-s3.json`**, not read from any report that exists — the committed
+reports were regenerated under the caps, which is the whole point. Each is
+reproducible by hand from that one file:
+
+- **6.38** — the mean of the four `resume-bullet-writer` task scores with
+  `mean_capped` read as `mean` instead.
+- **6.37** — the mean of the three per-seed skill means with
+  `apply_placeholder_cap` removed from each criterion sample.
+
+There is no committed pre-cap report to read them from, and none should be
+invented: hand-stamping one would assert a provenance it does not have.
+
+The composite was not expected to rise (spec §4.1, D4) and it did not, on
+either model.
+
+**An earlier revision of this table read `6.10` in the "before caps" cell
+against `6.13` in the "after" cell, and then asserted immediately below it that
+"the composite was not expected to rise and it did not" — directly above a
++0.03 rise.** `6.10` is not a composite at all: it is **one seed's reading**,
+the third element of the `[5.81, 6.47, 6.11]` per-seed list quoted earlier in
+this file. The table was comparing a single seed against a three-seed mean, so
+the "+0.03" was an artefact of the units rather than a measurement. The two
+rows above are now the same model read both ways.
 
 ### Inter-judge, re-measured on the same candidates
 
@@ -486,16 +583,47 @@ temperature 0.0" is not sufficient to make a re-run a like-for-like
 re-measurement. This is recorded rather than smoothed over: the earlier
 zero-swing figures were real for that run and are not reproducible now.
 
-### The staleness guard does not cover the caps
+### The staleness guard covered the rubric but not the scoring
 
 The guard was built for the failure where a report is scored against *different
 rubric anchors*. These reports were regenerated under a changed **scoring
 function** with unchanged anchors, and `rubric_fingerprint` hashes the rubric
 only — so `layer3_interjudge.py` did not reject the pre-cap reports. Running it
 against the committed report exited **0** and completed a full 30-call run
-rather than the expected exit 2. The staleness is real; the guard simply does
-not detect this class of it. A `scoring_fingerprint` covering the cap functions
-would close the gap. Reported rather than worked around.
+rather than the expected exit 2. The staleness was real; the guard simply did
+not detect this class of it.
+
+That hole is now closed. `scoring_fingerprint` hashes the three functions that
+turn anchor scores into reported numbers — `classify_placeholders`,
+`worst_case_placeholders`, `apply_placeholder_cap` — together with the patterns
+and constants they close over. The function bodies are read from the source
+rather than restated in the hash, so a branch added to one of them cannot be
+forgotten there and silently reopen the same gap. Every report records both
+fingerprints, and `layer3_interjudge.py` **exits 2** on either mismatch.
+
+**The cost, stated rather than absorbed: both committed reports predate
+`scoring_fingerprint`, so `layer3_interjudge.py` now refuses them.** They were
+produced before the field existed and cannot be shown to have been produced
+under any particular scoring policy. The honest fix is to regenerate them
+against the live backend —
+
+```
+python evals/layer3_judge.py --backend openai_compatible --split all \
+    --seeds 3 --json layer3-live-s3.json
+```
+
+— which needs credentials and a few hundred paid calls, so it was not done here.
+Making the guard lenient so the old reports keep working would have restored
+exactly the defect it exists to close.
+
+`layer3_variance.py` is unaffected and still analyses both reports. It reads
+the harness's own recorded `score_by_seed` rather than recomputing a score
+through its own model of the caps, so a changed policy cannot make it report a
+number the harness did not produce. The inter-judge tool is where the staleness
+was undetectable, because that tool compares two runs rather than reading one.
+This is a real residual limitation and not a claim of full coverage: the
+analyser will happily report a `score_by_seed` that a later policy would have
+computed differently.
 
 ## Four design choices, each avoiding a dishonesty
 
@@ -542,7 +670,20 @@ auditable rather than invisible.
 | The ≥1.0 material-gap cutoff is pinned from both sides | `test_gap_just_under_the_threshold_is_not_material` | lowering it to 0.5 |
 | A fully-vetoed skill raises no misattribution flag | `test_fully_vetoed_skill_reports_no_unvetoed_mean` | counting it as misattribution → 3 failures |
 | `--judge-temperature` reaches the request | `test_judge_temperature_is_carried_into_the_request` | hardcoding 0.0 |
+| A report scored under changed cap or classifier functions is refused | `tests/test_layer3_staleness_guard.py` | hashing anchors only |
+| A report whose skills were not all scored by the same model is refused | `tests/test_layer3_variance.py` | blending the two means |
 | Every figure quoted in this doc matches the reports | `scripts/check_doc_figures.py` (CI) | corrupting a quoted rate |
+
+**Two of those guards have no figure behind them, and that is deliberate.**
+`check_doc_figures.py` verifies that a number is *present* in this prose, not
+that it appears next to the claim it supports — so a figure quoted in two
+places passes if one occurrence is correct. That is why the composites above are
+labelled with the artifact they come from rather than left to be inferred from
+their neighbours. The classification section in this file is **not** checked at
+all, by any tool: it was stale prose describing a classifier that no longer
+existed for four rounds, and a maintainer reading it would have "fixed" correct
+code to match. Extending `check_doc_figures.py` to cover it is the durable fix
+and is not done here.
 
 **There is no flag that converts a stub run into a claim.** The two backends
 produce structurally different reports, and only the live one may be gated on.

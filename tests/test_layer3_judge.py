@@ -460,6 +460,33 @@ def test_report_records_the_rubric_it_was_scored_against(spec) -> None:
     assert layer3.rubric_fingerprint(spec["rubric"]), "fingerprint must not be empty"
 
 
+def test_written_reports_record_the_scoring_policy_they_were_scored_under(
+    tmp_path, spec
+) -> None:
+    """A guard nothing writes to is a guard that refuses everything.
+
+    `scoring_fingerprint` only closes the staleness hole if every report the
+    harness emits carries it. The stub backend is the only one runnable here,
+    and it writes the same two report shapes the live backend does, so it is
+    the cheapest place to prove the field actually reaches the file.
+    """
+    out = tmp_path / "report.json"
+    proc = run_cli("--backend", "stub", "--split", "held_out", "--seeds", "2",
+                   "--json", str(out))
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["scoring_fingerprint"] == layer3.scoring_fingerprint()
+    assert data["rubric_fingerprint"] == layer3.rubric_fingerprint(spec["rubric"])
+
+
+def test_scoring_fingerprint_is_stable_and_non_empty() -> None:
+    """A fingerprint that changes between calls invalidates every report on
+    every run, which is a worse failure than the staleness it prevents."""
+    first = layer3.scoring_fingerprint()
+    assert first and len(first) == 16, "fingerprint must be a short non-empty hex"
+    assert first == layer3.scoring_fingerprint(), "must not vary between calls"
+
+
 def test_stub_run_is_deterministic() -> None:
     rubric = json.loads(TASKS_PATH.read_text(encoding="utf-8"))["rubric"]
     spec_data = json.loads(TASKS_PATH.read_text(encoding="utf-8"))
