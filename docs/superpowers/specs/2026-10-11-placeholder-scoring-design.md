@@ -101,17 +101,31 @@ A placeholder is **scaffolding** if:
    documents mandate the Google XYZ formula, so `[X]`, `[Y]`, `[Z]` are slots the
    formula requires to be filled by the writer's own material, not by data.
 
-2. **It occupies a formula-governed slot.** The placeholder is directly preceded
-   by one of these, ignoring case:
-   - the phrase `as measured by` (a trailing `by` or `measured by` also qualifies)
-   - the standalone word `by`, with the placeholder immediately after it
+2. **It occupies a formula-governed slot.** The phrase `as measured by`
+   immediately precedes it, ignoring case.
 
-   The second form is what makes `"...improving [X] as measured by [Y] by [Z]"`
-   scaffolding: all three slots follow formula language.
+   This clause is deliberately narrow. An earlier draft also treated any
+   placeholder directly after a standalone `by` as scaffolding, which
+   contradicted §3.3: `"cut cycle time by [N] days"` and `"reducing manual
+   effort by [N] hours per week"` are the same construction — a placeholder
+   holding the *value* of a quantity the output names — and differ only in base
+   verb versus gerund, which no rule restricted to preceding text can separate.
+   Both are named. The bare-`by` clause existed for the XYZ case `"...by [Z]"`,
+   where the placeholder is already caught by trigger 1.
 
-3. **It is an instruction to the writer.** Its contents match an imperative
-   instruction pattern: it begins with a verb such as `insert`, `add`, `describe`,
-   `specify`, `list`, `name`, `fill`, or contains `your`, `e.g.`, `example`.
+3. **It is an instruction to the writer.** Its contents, lowercased, begin with
+   a verb such as `insert`, `add`, `describe`, `specify`, `list`, `name`, `fill`
+   — or begin with `your`.
+
+   This is a **positive** test. A placeholder is named unless one of the three
+   triggers fires. An earlier draft inferred an instruction from the *shape* of
+   the characters (a noun-phrase character class), which misclassified
+   `[end-to-end cycle time]`, `[Q3 pipeline value]` and `[time-to-market]` as
+   scaffolding. Absence of evidence of a structural slot means the placeholder is
+   holding a value, which is the common case.
+
+   Containment of `e.g.` or `example` anywhere in the bracket is **not** a
+   trigger: `[metric, e.g. 30%]` names a quantity and is named.
 
    Example: `[insert specific action, e.g. automated the deployment pipeline]`
 
@@ -127,7 +141,8 @@ scaffolding; otherwise it is named.
 |---|---|---|
 | `improving completion rates from [N]% to [M]%` | named (2) | none fired |
 | `cutting completion time from [N] to [M] days` | named (2) | none fired |
-| `reducing manual effort by [N] hours per week` | named (1) | none fired |
+| `reducing manual effort by [N] hours per week` | named (1) | none fired — `by` is not a trigger |
+| `cut cycle time by [N] days` | named (1) | none fired — `by` is not a trigger |
 | `improving [X] as measured by [Y] by [Z]` | scaffolding (3) | `[X]`/`[Y]`/`[Z]` are formula variables; `as measured by` also fires |
 | `reduced spend by 15-20% through [insert specific action]` | scaffolding (1) | writer instruction |
 | `Led the migration of the legacy warehouse` | none (0) | no placeholder present |
