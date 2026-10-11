@@ -60,7 +60,7 @@ def test_placeholder_not_after_measured_by_is_not_scaffolding():
     assert r["named"] == 1, r
 
 
-def test_placeholder_not_after_by_is_named():
+def test_a_by_at_a_distance_does_not_make_a_placeholder_scaffolding():
     # A bare "by" names a quantity slot, not a formula one: "cut cycle time by
     # [N] days" and "reducing manual effort by [N] hours per week" are the same
     # construction. An earlier rule read any of them as scaffolding and then had
@@ -77,11 +77,32 @@ def test_placeholder_not_after_by_is_named():
     "delivered results via [add metric here]",
     "improved [describe the outcome] for the team",
     "shipped [your e.g. example here]",
+    "reduced cost by [Insert: the metric]",
+    "reduced cost by [describe: outcome]",
+    "delivered [write the summary] to the board",
+    "delivered [state the metric] to the board",
 ])
 def test_writer_instruction_is_scaffolding(fragment):
     r = classify(fragment)
     assert r["total"] == 1, r
     assert r["scaffolded"] == 1, r
+
+
+def test_punctuation_around_the_head_word_does_not_hide_the_instruction():
+    """A writer punctuates the head word: "[Insert: the metric]" opens with
+    "insert:" and "[describe the outcome (optional)]" with "describe". Without
+    the strip, the lookup misses and an instruction to the writer is scored as a
+    quantity the output named -- the expensive direction, because a named
+    placeholder escapes the agency cap.
+
+    The strip normalises one token and then matches exactly. It is not the
+    character-class inference removed in the previous round, which guessed
+    noun-ness from the shape of the contents and misread "[time-to-market]"."""
+    for fragment in ("[Insert: the metric]", "[describe: the outcome (optional)]"):
+        r = classify(f"reduced cost by {fragment}")
+        assert r["total"] == 1, fragment
+        assert r["scaffolded"] == 1, fragment
+        assert r["named"] == 0, fragment
 
 
 def test_your_marker_alone_makes_a_bracket_scaffolding():

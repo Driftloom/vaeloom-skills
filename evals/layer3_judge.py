@@ -82,11 +82,17 @@ _FORMULA_VARIABLE_RE = re.compile(r"^[XYZxyz]$")
 _MEASURED_BY_RE = re.compile(r"\bas\s+measured\s+by\s*$", re.IGNORECASE)
 _INSTRUCTION_VERBS = {
     "insert", "add", "describe", "specify", "list", "name", "fill",
-    "enter", "replace", "provide", "detail", "quantify",
+    "enter", "replace", "provide", "detail", "quantify", "write", "state",
 }
 # Not a verb, but a bracket opening with "your" addresses the writer rather than
 # naming a quantity, so it is scaffolding on the same footing as one.
 _WRITER_MARKER = "your"
+# Punctuation a bracket may put at either end of its first word: "[Insert: the
+# metric]", "[describe the outcome (optional)]", "[**write** the summary]".
+# Stripped from both ends so the word is still recognisable. This normalises one
+# token before an exact lookup; it does not decide noun-ness from a character
+# class, which is the inference that misread "[time-to-market]" as scaffolding.
+_HEAD_PUNCTUATION = ".,:;!?()[]{}\"'*-–—"
 
 
 def classify_placeholders(text: str) -> dict:
@@ -103,6 +109,8 @@ def classify_placeholders(text: str) -> dict:
       2. the phrase "as measured by" immediately precedes it;
       3. the first word of the contents is an instruction verb, or is "your",
          which makes the bracket a note to the writer rather than a quantity.
+         Punctuation around that word is stripped first, so "[Insert: the
+         metric]" is recognised as the same instruction as "[insert]".
 
     The default is the half that matters. Scaffolding needs positive evidence of
     an instruction, so a quantity the output names for itself -- "[end-to-end
@@ -124,7 +132,7 @@ def classify_placeholders(text: str) -> dict:
             scaffolded += 1
             continue
         words = inner.lower().split()
-        head = words[0] if words else ""
+        head = words[0].strip(_HEAD_PUNCTUATION) if words else ""
         if head in _INSTRUCTION_VERBS or head == _WRITER_MARKER:
             scaffolded += 1
             continue
