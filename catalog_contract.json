@@ -30,16 +30,10 @@
     "$comment": "Career skills in this repo that the app catalog does not serve. Measured: none of these can ever reach an agent, because the catalog is the only thing skill_injection reads. Listed so the gap is explicit rather than invisible.",
     "skills": [
       "cover-letter-generator",
-      "interview-prep-generator",
       "resume-ats-optimizer",
-      "resume-bullet-writer",
       "resume-formatter",
-      "resume-quantifier",
       "resume-section-builder",
-      "resume-tailor",
-      "resume-version-manager",
-      "salary-negotiation-prep",
-      "tech-resume-optimizer"
+      "salary-negotiation-prep"
     ]
   },
   "condensed_only_triggers": {
