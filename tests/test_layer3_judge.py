@@ -693,3 +693,160 @@ class TestPlaceholderEvidenceIsShownToTheJudge:
             assert forbidden not in lowered, (
                 f"prompt leaks scoring instruction {forbidden!r}"
             )
+
+
+class TestPlaceholderCaps:
+    """Spec D3. The cap is a ceiling applied to a criterion's aggregated mean,
+    before the fabrication veto, so a vetoed task is unaffected."""
+
+    CAP = 5.0
+
+    def _run(self, candidate, judge_score, criterion_key="impact"):
+        class Fixed:
+            name, synthetic = "fixed", False
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return candidate
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": judge_score, "rationale": "fixed"}
+
+        spec = {"tasks": [{
+            "id": "t1", "split": "held_out", "label": "t",
+            "input": "Led the migration of the legacy warehouse.",
+            "judge_question": "Is the outcome stated?",
+            # The source states no metric, so any digit the candidate emits
+            # outside a placeholder is invented. mechanical_evidence requires
+            # this flag for the veto to fire at all; False makes it unreachable
+            # and the veto test below unsatisfiable.
+            "mechanical_expectations": {"must_not_fabricate": True,
+                                        "source_has_no_metric": True},
+        }]}
+        rubric = {"criteria": [
+            {"key": criterion_key, "label": criterion_key.capitalize(),
+             "weight": 1.0, "anchors": {}},
+        ]}
+        result = layer3.evaluate_skill(
+            "resume-bullet-writer", spec, rubric, Fixed(), "held_out", 3
+        )
+        return result["tasks"][0]
+
+    # --- impact: capped whenever any placeholder is present ------------------
+
+    def test_impact_capped_at_five_with_a_placeholder(self):
+        t = self._run("cut cycle time by [N] days", 10, "impact")
+        assert t["criteria"]["impact"]["mean_capped"] == self.CAP
+        # The judge's own number survives, so a capped criterion stays auditable
+        # rather than becoming an unexplained 5.
+        assert t["criteria"]["impact"]["mean"] == 10.0
+        assert t["score"] == self.CAP
+
+    def test_impact_untouched_without_a_placeholder(self):
+        t = self._run("Led the migration of the legacy warehouse.", 10, "impact")
+        assert t["criteria"]["impact"]["mean"] == 10.0
+        assert t["score"] == 10.0
+
+    def test_impact_capped_for_a_named_placeholder_too(self):
+        t = self._run("improving completion rates from [N]% to [M]%", 10, "impact")
+        assert t["criteria"]["impact"]["mean_capped"] == self.CAP
+
+    # --- agency: capped only for scaffolding ---------------------------------
+
+    def test_agency_capped_for_scaffolding(self):
+        t = self._run("improving [X] as measured by [Y] by [Z]", 10, "agency")
+        assert t["criteria"]["agency"]["mean_capped"] == self.CAP
+
+    def test_agency_untouched_for_named_placeholders(self):
+        """The load-bearing half of the agency rule, and it must be asserted on
+        mean_capped. Asserted on mean alone it cannot fail: dropping the
+        scaffolded test from the cap condition leaves every test in this class
+        green, so the named/scaffolding distinction would ship unenforced.
+        """
+        t = self._run("improving completion rates from [N]% to [M]%", 10, "agency")
+        assert t["criteria"]["agency"]["mean"] == 10.0
+        assert t["criteria"]["agency"]["mean_capped"] == 10.0
+        assert t["score"] == 10.0
+
+    def test_agency_untouched_without_placeholders(self):
+        t = self._run("Led the migration of the legacy warehouse.", 10, "agency")
+        assert t["criteria"]["agency"]["mean"] == 10.0
+        assert t["criteria"]["agency"]["mean_capped"] == 10.0
+        assert t["score"] == 10.0
+
+    # --- truthfulness: never capped ------------------------------------------
+
+    def test_truthfulness_is_never_capped(self):
+        t = self._run("improving [X] as measured by [Y] by [Z]", 10, "truthfulness")
+        assert t["criteria"]["truthfulness"]["mean"] == 10.0
+        assert t["score"] == 10.0
+
+    # --- the cap is a ceiling, not a floor -----------------------------------
+
+    def test_a_low_judge_score_is_never_raised(self):
+        t = self._run("improving [X] as measured by [Y]", 2, "impact")
+        assert t["criteria"]["impact"]["mean"] == 2.0
+        # Asserted on mean_capped, not mean: the cap never writes to mean, so
+        # the assertion above alone holds under a floor as well as a ceiling.
+        assert t["criteria"]["impact"]["mean_capped"] == 2.0
+        assert t["score"] == 2.0
+
+    # --- ordering against the veto (spec 4.1) --------------------------------
+
+    def test_a_vetoed_task_is_unaffected_by_the_cap(self):
+        """A veto pins the task to 0.0 whatever the cap did to the criteria.
+        Clamping after the veto would still read 0.0, so this asserts the
+        criteria themselves were clamped and the task still landed at 0.0."""
+        t = self._run("cut cycle time by [N] days and cut costs 15-20%", 10, "impact")
+        assert t["fabrication_vetoed"] is True
+        assert t["score"] == 0.0
+        assert t["criteria"]["impact"]["mean_capped"] == self.CAP
+        assert t["criteria"]["impact"]["mean"] == 10.0
+
+    def test_cap_applies_to_the_mean_not_to_each_seed(self):
+        """Clamping three seeds of 10 and averaging gives 5.0; clamping the mean
+        of 10 gives 5.0 too. They differ once seeds disagree: samples
+        [10, 10, 4] must clamp to 5.0, not to the mean of [5, 5, 4]."""
+        assert layer3.apply_placeholder_cap(
+            "impact", 8.0, {"total": 1, "named": 1, "scaffolded": 0}
+        ) == self.CAP
+
+    def test_the_cap_lands_on_the_aggregated_mean_of_disagreeing_seeds(self):
+        """The case above states this rule but cannot enforce it: it calls the
+        function directly with a literal, so a per-seed implementation returns
+        the same 5.0 and the test never sees a difference.
+
+        Here the seeds genuinely disagree. Clamping each sample first gives
+        mean([5, 5, 4]) = 4.67; clamping the aggregate mean gives min(8.0, 5)
+        = 5.0. Only one of those satisfies the assertion below.
+        """
+
+        class Disagreeing:
+            """Judge scores 10, 10, 4 across the three seeds."""
+
+            name, synthetic = "fixed", False
+            scores = [10, 10, 4]
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return "cut cycle time by [N] days"
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": self.scores[seed], "rationale": "disagreeing"}
+
+        spec = {"tasks": [{
+            "id": "t1", "split": "held_out", "label": "t",
+            "input": "Led the migration of the legacy warehouse.",
+            "judge_question": "Is the outcome stated?",
+            "mechanical_expectations": {"must_not_fabricate": True,
+                                        "source_has_no_metric": True},
+        }]}
+        rubric = {"criteria": [
+            {"key": "impact", "label": "Impact", "weight": 1.0, "anchors": {}},
+        ]}
+        task = layer3.evaluate_skill(
+            "resume-bullet-writer", spec, rubric, Disagreeing(), "held_out", 3
+        )["tasks"][0]
+
+        assert task["criteria"]["impact"]["samples"] == [10, 10, 4]
+        assert task["criteria"]["impact"]["mean"] == 8.0
+        assert task["criteria"]["impact"]["mean_capped"] == self.CAP
+        assert task["score"] == self.CAP

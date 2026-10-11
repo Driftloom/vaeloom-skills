@@ -410,6 +410,34 @@ def non_discriminating(results: list[dict]) -> dict[str, set]:
     return {k: v for k, v in seen.items() if len(v) == 1 and len(results) >= 1} if results else {}
 
 
+PLACEHOLDER_CAP = 5.0
+
+
+def apply_placeholder_cap(criterion_key: str, mean: float, placeholders: dict) -> float:
+    """Cap a criterion score when the output's placeholders contradict it.
+
+    Spec D3, and deliberately differentiated:
+
+      truthfulness  no cap -- marking a blank IS the correct behaviour, and this
+                    criterion exists to reward it
+      impact        capped whenever any placeholder is present -- it wants a real
+                    outcome value and there is none
+      agency        capped only for a scaffolding placeholder -- a named one does
+                    not obscure the actor, a scaffolding one occupies the action
+                    slot, which is what agency measures
+
+    A ceiling, never a floor. A criterion the judge already scored low is
+    reporting a real deficiency and is left alone.
+    """
+    if placeholders.get("total", 0) <= 0:
+        return mean
+    if criterion_key == "impact":
+        return min(mean, PLACEHOLDER_CAP)
+    if criterion_key == "agency" and placeholders.get("scaffolded", 0) > 0:
+        return min(mean, PLACEHOLDER_CAP)
+    return mean
+
+
 def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, seeds: int) -> dict:
     tasks = [t for t in spec["tasks"] if split == "all" or t["split"] == split]
     skill_doc = read_skill_doc(skill)
@@ -463,9 +491,19 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
                 "rationale": samples[0].get("rationale", ""),
             }
 
+        # Spec 4.1: caps apply to the aggregated mean and before the veto, so a
+        # vetoed task still lands on 0.0 for the reason the veto gave it. Every
+        # criterion reads the same classification object that build_prompt
+        # rendered, so the prompt copy and the clamp cannot drift apart.
+        for criterion in rubric["criteria"]:
+            entry = criteria_scores[criterion["key"]]
+            entry["mean_capped"] = apply_placeholder_cap(
+                criterion["key"], entry["mean"], evidences[0]["placeholders"]
+            )
+
         total = round(
             sum(
-                c["mean"] * c["weight"]
+                c["mean_capped"] * c["weight"]
                 for c in criteria_scores.values()
                 if c["weight"] > 0
             ),
