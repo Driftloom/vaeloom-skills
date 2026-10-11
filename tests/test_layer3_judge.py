@@ -793,9 +793,17 @@ class TestPlaceholderCaps:
     # --- ordering against the veto (spec 4.1) --------------------------------
 
     def test_a_vetoed_task_is_unaffected_by_the_cap(self):
-        """A veto pins the task to 0.0 whatever the cap did to the criteria.
-        Clamping after the veto would still read 0.0, so this asserts the
-        criteria themselves were clamped and the task still landed at 0.0."""
+        """The cap must not be able to lift a vetoed task off 0.0.
+
+        The cap is computed first and the veto applied last, so the criteria
+        carry the capped value while the task still reads 0.0. Reorder them --
+        run the veto, then compute the total from the capped criteria -- and the
+        veto's 0.0 is overwritten by the cap's 5.0: a fabrication veto silently
+        defeated by a rule meant to be weaker than it.
+
+        The score alone does not carry this. It is asserted alongside the
+        criteria so a run where the cap simply did not fire cannot satisfy it.
+        """
         t = self._run("cut cycle time by [N] days and cut costs 15-20%", 10, "impact")
         assert t["fabrication_vetoed"] is True
         assert t["score"] == 0.0
@@ -850,3 +858,83 @@ class TestPlaceholderCaps:
         assert task["criteria"]["impact"]["mean"] == 8.0
         assert task["criteria"]["impact"]["mean_capped"] == self.CAP
         assert task["score"] == self.CAP
+
+    # --- the clamp reads the worst case across seeds, not seed 0 -------------
+
+    def _seeded(self, per_seed, criterion_key, judge_score=10):
+        class Seeded:
+            name, synthetic = "fixed", False
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return per_seed[seed]
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": judge_score, "rationale": "fixed"}
+
+        spec = {"tasks": [{
+            "id": "t1", "split": "held_out", "label": "t",
+            "input": "Led the migration of the legacy warehouse.",
+            "judge_question": "Is the outcome stated?",
+            "mechanical_expectations": {"must_not_fabricate": True,
+                                        "source_has_no_metric": True},
+        }]}
+        rubric = {"criteria": [
+            {"key": criterion_key, "label": criterion_key.capitalize(),
+             "weight": 1.0, "anchors": {}},
+        ]}
+        return layer3.evaluate_skill(
+            "resume-bullet-writer", spec, rubric, Seeded(), "held_out", 3
+        )["tasks"][0]
+
+    def test_agency_is_capped_when_a_later_seed_carries_scaffolding(self):
+        """Seed 0 comes out clean; seed 1 does not. The cap must fire anyway.
+
+        Reading evidences[0] made the outcome a function of generation order:
+        the same task scored 10 or 5 depending on which seed came back without
+        a scaffold. That is the escape this rules out.
+        """
+        t = self._seeded({
+            0: "Led the migration of the legacy warehouse.",
+            1: "improving [X] as measured by [Y] by [Z]",
+            2: "Led the migration of the legacy warehouse.",
+        }, "agency")
+        assert t["criteria"]["agency"]["mean"] == 10.0
+        assert t["criteria"]["agency"]["mean_capped"] == self.CAP
+        assert t["score"] == self.CAP
+
+    def test_impact_is_capped_when_a_later_seed_carries_any_placeholder(self):
+        t = self._seeded({
+            0: "Led the migration of the legacy warehouse.",
+            1: "cut cycle time by [N] days",
+            2: "Led the migration of the legacy warehouse.",
+        }, "impact")
+        assert t["criteria"]["impact"]["mean_capped"] == self.CAP
+        assert t["score"] == self.CAP
+
+    def test_agency_stays_uncapped_when_every_seed_is_clean_or_named(self):
+        """The aggregation must not cap on its own. Named placeholders in every
+        seed leave agency alone, which is the named/scaffolding rule surviving
+        the move to a cross-seed aggregate."""
+        t = self._seeded({
+            0: "Led the migration of the legacy warehouse.",
+            1: "improving completion rates from [N]% to [M]%",
+            2: "improving completion rates from [N]% to [M]%",
+        }, "agency")
+        assert t["criteria"]["agency"]["mean_capped"] == 10.0
+        assert t["score"] == 10.0
+
+    def test_worst_case_placeholders_takes_the_max_not_the_sum_or_seed_zero(self):
+        def counts(text):
+            return layer3.mechanical_evidence(text, {})["placeholders"]
+
+        evidences = {s: {"placeholders": counts(t)} for s, t in enumerate([
+            "Led the migration of the legacy warehouse.",
+            "improving [X] as measured by [Y] by [Z]",
+            "cut cycle time by [N] days and [M]% and [P] hours",
+        ])}
+        assert evidences[0]["placeholders"] == {"total": 0, "named": 0, "scaffolded": 0}
+        assert layer3.worst_case_placeholders(evidences) == {"total": 3, "scaffolded": 3}
+
+    def test_worst_case_placeholders_of_nothing_is_zero_not_an_error(self):
+        """A task judged with no seeds must not raise out of the clamp path."""
+        assert layer3.worst_case_placeholders({}) == {"total": 0, "scaffolded": 0}

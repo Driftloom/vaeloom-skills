@@ -91,11 +91,19 @@ def analyse(report: dict) -> dict:
         # Prefer the recorded task score; older or minimal fixtures may only
         # carry the weighted criteria, so fall back to those rather than
         # requiring a field every report shape has to have.
+        #
+        # The fallback must read mean_capped, not mean. Since the placeholder
+        # caps landed, the harness computes a task total from the capped values,
+        # so a fallback built on mean would silently report an uncapped number
+        # for exactly the fixtures that lack a recorded score. Reports written
+        # before the caps have no mean_capped, and for those mean IS the value
+        # the total was computed from, so it remains the correct fallback.
         def task_score(t):
             if "score" in t:
                 return t["score"]
             return sum(
-                c["mean"] * c["weight"] for c in t["criteria"].values() if c["weight"] > 0
+                c.get("mean_capped", c["mean"]) * c["weight"]
+                for c in t["criteria"].values() if c["weight"] > 0
             )
 
         clean = [task_score(t) for t in r["tasks"] if not t["fabrication_vetoed"]]

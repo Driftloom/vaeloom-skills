@@ -413,6 +413,38 @@ def non_discriminating(results: list[dict]) -> dict[str, set]:
 PLACEHOLDER_CAP = 5.0
 
 
+def worst_case_placeholders(evidences: dict) -> dict:
+    """Fold the per-seed placeholder classifications into one, worst case.
+
+    ``evidences`` is keyed by seed and every generation is its own text, so no
+    single seed is representative. Reading seed 0 alone lets a task escape the
+    agency cap whenever seed 0 happened to come out clean and a later seed did
+    not -- the escape would depend on generation order rather than on the output.
+    This is the same worst-case rule the fabrication veto applies a few lines
+    below, and two mechanical gates judging the same text must not disagree about
+    which generation to believe.
+
+    Max per field rather than a sum: the caps ask whether any generation did
+    something, not how many did, and a sum would also make one generation's two
+    placeholders look worse than another's one.
+
+    Built from the same classification objects ``build_prompt`` rendered, so the
+    clamp never sees a classification the judge was not shown. Only the two
+    fields ``apply_placeholder_cap`` reads are carried; ``named`` is not needed
+    by any cap.
+    """
+    return {
+        "total": max(
+            (e["placeholders"].get("total", 0) for e in evidences.values()),
+            default=0,
+        ),
+        "scaffolded": max(
+            (e["placeholders"].get("scaffolded", 0) for e in evidences.values()),
+            default=0,
+        ),
+    }
+
+
 def apply_placeholder_cap(criterion_key: str, mean: float, placeholders: dict) -> float:
     """Cap a criterion score when the output's placeholders contradict it.
 
@@ -492,13 +524,15 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
             }
 
         # Spec 4.1: caps apply to the aggregated mean and before the veto, so a
-        # vetoed task still lands on 0.0 for the reason the veto gave it. Every
-        # criterion reads the same classification object that build_prompt
-        # rendered, so the prompt copy and the clamp cannot drift apart.
+        # vetoed task still lands on 0.0 for the reason the veto gave it. The
+        # clamp reads the worst case across seeds, which is the rule the
+        # fabrication veto above uses, and is derived from the same objects
+        # build_prompt rendered.
+        placeholders = worst_case_placeholders(evidences)
         for criterion in rubric["criteria"]:
             entry = criteria_scores[criterion["key"]]
             entry["mean_capped"] = apply_placeholder_cap(
-                criterion["key"], entry["mean"], evidences[0]["placeholders"]
+                criterion["key"], entry["mean"], placeholders
             )
 
         total = round(
@@ -627,6 +661,15 @@ def main() -> int:
         print("            verdict is available from this run. See below.")
     print("=" * 76)
 
+    # The criterion rows print two different numbers whenever a placeholder cap
+    # fired, and only one of them is in the task score. Without a legend a reader
+    # adds the column up, does not get the score beside it, and concludes the
+    # arithmetic is broken.
+    print("legend    : a criterion prints judge->capped when a placeholder cap")
+    print("            was applied to it; the arrow's right side is what the task")
+    print("            score is computed from. No arrow means no cap.")
+    print("=" * 76)
+
     for r in results:
         print(f"\n{r['skill']}  mean={r['mean_score']}/10  "
               f"(min {r['min_score']}, max {r['max_score']}, sd {r['stdev']})")
@@ -637,7 +680,13 @@ def main() -> int:
             for key, c in t["criteria"].items():
                 mark = "!" if c["unstable"] else " "
                 weight = f"w={c['weight']:<6}" if c["weight"] > 0 else "DISABLED "
-                print(f"    {mark}{key:<14}{c['mean']:>5}/10  {weight}samples={c['samples']} sd={c['stdev']}")
+                # Both numbers, labelled by an arrow, because the capped one is
+                # the one the score above was computed from and printing only
+                # the raw mean would leave the column not adding up to it.
+                capped = c.get("mean_capped", c["mean"])
+                judged = (f"{c['mean']:>4}->{capped:<4}" if capped != c["mean"]
+                          else f"{c['mean']:>5}     ")
+                print(f"    {mark}{key:<14}{judged}/10  {weight}samples={c['samples']} sd={c['stdev']}")
 
     # Surfaced automatically so a criterion that has stopped measuring anything
     # is reported rather than quietly subtracted from every score.

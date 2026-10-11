@@ -106,6 +106,52 @@ class TestSeedScores:
         assert seed_scores(result, 3) == [5.0, 5.0, 5.0]
 
 
+class TestAnalyserAgreesWithTheHarnessOnCaps:
+    """The analyser recomputes a task total when a report does not carry one.
+
+    Since the placeholder caps landed, that total is computed from the capped
+    criterion values. A fallback still built on the raw mean reports an uncapped
+    number, so the analyser and the harness disagree about the same task -- and
+    the disagreement is invisible, because the only thing that changed is which
+    field a comprehension happens to read.
+    """
+
+    def _capped_task(self, *, include_score):
+        """One task: the judge said 10 everywhere, the cap put impact at 5."""
+        task = make_task("t1", [10] * 3, [10] * 3, [10] * 3,
+                         fabrication_by_seed={"0": False, "1": False, "2": False})
+        for key, capped in (("truthfulness", 10.0), ("agency", 10.0), ("impact", 5.0)):
+            task["criteria"][key]["mean_capped"] = capped
+        if include_score:
+            task["score"] = round(sum(
+                c["mean_capped"] * c["weight"] for c in task["criteria"].values()
+                if c["weight"] > 0
+            ), 2)
+        return task
+
+    def test_fallback_uses_the_capped_mean_not_the_raw_one(self):
+        report = make_report([("s", [self._capped_task(include_score=False)])])
+        a = analyse(report)
+        # 0.5*10 + 0.3*10 + 0.2*5 = 9.0. The raw mean would give 10.0.
+        assert a["unvetoed_means"]["s"] == pytest.approx(9.0, abs=0.01)
+
+    def test_a_pre_cap_report_still_analyses_on_its_raw_mean(self):
+        """A report written before the caps has no mean_capped, and for that
+        report the mean IS what the total was computed from. Falling back must
+        not require the field, or every committed report stops analysing."""
+        task = self._capped_task(include_score=False)
+        for crit in task["criteria"].values():
+            del crit["mean_capped"]
+        report = make_report([("s", [task])])
+        a = analyse(report)
+        assert a["unvetoed_means"]["s"] == pytest.approx(10.0, abs=0.01)
+
+    def test_a_recorded_score_still_wins_over_any_recomputation(self):
+        report = make_report([("s", [self._capped_task(include_score=True)])])
+        a = analyse(report)
+        assert a["unvetoed_means"]["s"] == pytest.approx(9.0, abs=0.01)
+
+
 class TestSignalVersusNoise:
     def test_large_gap_is_supported(self):
         a = analyse(make_report([
