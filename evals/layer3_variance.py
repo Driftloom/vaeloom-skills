@@ -127,6 +127,39 @@ def task_placeholders_by_seed(task: dict) -> dict:
     return out
 
 
+def _refuse_mixed_recording(result: dict) -> None:
+    """Refuse a task set where only some tasks carry `score_by_seed`.
+
+    The decision of read-or-recompute is per task, so a set containing both
+    kinds of task would be scored partly by the harness's capped-mean model and
+    partly by the per-sample model here, and the mean of the two is neither
+    model's number. That is the same drift this module exists to catch, reached
+    through a malformed report rather than a second implementation of the rule,
+    and it is silent: every task's score looks like an ordinary score and the
+    average of two different models looks like an ordinary average.
+
+    This is defensive. The harness writes the field on every task of a report
+    or on none, so no report it produces can get here. It exists so that a
+    report edited, merged or truncated into that shape is refused rather than
+    quietly analysed as a blend.
+
+    Checked once for the whole task set rather than per task, because the
+    answer is a property of the set and every task needs the same answer. An
+    empty set is not mixed, and is left to the empty-set path in `seed_scores`.
+    """
+    tasks = result["tasks"]
+    recorded = [t for t in tasks if t.get("score_by_seed") is not None]
+    if not recorded or len(recorded) == len(tasks):
+        return
+    raise CapsNotReproducible(
+        f"{len(recorded)} of {len(tasks)} tasks in skill {result.get('skill')!r} "
+        "record score_by_seed and the rest do not. A task set read partly from "
+        "the harness and partly recomputed here blends the harness's "
+        "capped-mean model with the per-sample model, and the mean of the two "
+        "belongs to neither. Re-run the harness so the report is written whole."
+    )
+
+
 def _task_score_at_seed(task: dict, i: int, keys: list[str], capped_report: bool) -> float:
     """One task's score at seed `i`, preferring the number the harness recorded.
 
@@ -136,11 +169,14 @@ def _task_score_at_seed(task: dict, i: int, keys: list[str], capped_report: bool
        the harness ran this model, so its number is the harness's number and
        not a reconstruction that has to be kept in step with the harness by
        hand.
-    2. No such field -- a report predating it, or one trimmed down to its
-       criteria. Recomputed here from the stored samples, capped only if the
-       report says it is capped. This is the same shape as the `mean_capped`
-       fallback in `analyse`: the field is the fast path, the recomputation is
-       the compatibility path, and both read `mean_capped` to decide.
+    2. No such field, on a task set where no task has it -- a report predating
+       it, or one trimmed down to its criteria. Recomputed here from the
+       stored samples, capped only if the report says it is capped. This is
+       the same shape as the `mean_capped` fallback in `analyse`: the field is
+       the fast path, the recomputation is the compatibility path, and both
+       read `mean_capped` to decide. A task set where *some* tasks have the
+       field is refused by `_refuse_mixed_recording` before this runs, so
+       choosing per task here cannot blend the two.
     3. A capped report whose task also carries no per-seed text. The cap cannot
        be reproduced from anything, and the uncapped number this would produce
        contradicts the report's own `mean_capped`. Refuse.
@@ -196,14 +232,18 @@ def seed_scores(result: dict, seeds: int) -> list[float]:
     to catch, so the number is taken rather than reconstructed.
 
     Recomputation survives only for reports predating the field, and is the
-    same shape as the `mean_capped` fallback in `analyse`. A capped report whose
-    task offers nothing to recompute from raises `CapsNotReproducible` rather
-    than reporting an uncapped score.
+    same shape as the `mean_capped` fallback in `analyse`. Which of the two a
+    task takes is decided per task, so the whole task set is checked for a mix
+    first: a set where some tasks record the field and some do not raises
+    `CapsNotReproducible` rather than averaging the harness's model with this
+    module's. A capped report whose task offers nothing to recompute from
+    raises the same way, rather than reporting an uncapped score.
 
     The veto still wins: a fabricating task reads 0.0 whatever the cap
     produced, because one fabricating generation out of three is meant to zero
     the task.
     """
+    _refuse_mixed_recording(result)
     keys = weighted_criteria(result)
     capped_report = report_is_capped(result)
     out = []

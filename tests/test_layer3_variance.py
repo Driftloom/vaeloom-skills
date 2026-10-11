@@ -468,6 +468,91 @@ class TestHarnessAndAnalyserAgree:
             seed_scores(result, 3)
 
 
+class TestMixedRecordingIsRefused:
+    """A task set cannot be half read and half recomputed.
+
+    Whether a task's score comes from the harness or from here is decided per
+    task, so a set containing both kinds averages the harness's capped-mean
+    model with the per-sample model and reports a number that is neither's.
+    Nothing raises, and every task's score looks ordinary.
+
+    Defensive in the strict sense: evaluate_skill writes score_by_seed on every
+    task of a report or on none, so no report it produces reaches this. It is
+    here so a report edited or truncated into that shape is refused rather than
+    analysed.
+    """
+
+    def _two_task_result(self):
+        """A real two-task harness run, so the mixed shape starts from a
+        report the harness could actually have written."""
+        class Backend:
+            name, synthetic = "fixed", False
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return "cut cycle time by [N] days"
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": 10, "rationale": "fixed"}
+
+        spec = {"tasks": [
+            {"id": t, "split": "held_out", "label": t,
+             "input": "Led the migration of the legacy warehouse.",
+             "judge_question": "Is the outcome stated?",
+             "mechanical_expectations": {"must_not_fabricate": True,
+                                         "source_has_no_metric": True}}
+            for t in ("t1", "t2")
+        ]}
+        rubric = {"criteria": [
+            {"key": "impact", "label": "Impact", "weight": 1.0, "anchors": {}},
+        ]}
+        result = evaluate_skill(
+            "resume-bullet-writer", spec, rubric, Backend(), "held_out", 3)
+        # Precondition: the harness really does write it on every task.
+        assert all("score_by_seed" in t for t in result["tasks"])
+        return result
+
+    def test_a_set_where_only_some_tasks_record_the_field_is_refused(self):
+        result = self._two_task_result()
+        # Task 2 loses the field and its text is edited, which is what a
+        # truncated or hand-edited report looks like. Recomputing it now yields
+        # 10.0, against a task whose own recorded score says 5.0 -- so the
+        # blend would report 7.5 for a set whose two tasks both scored 5.0.
+        # A number that contradicts the report it came from, from a cause with
+        # no symptom.
+        assert result["tasks"][1]["score"] == 5.0
+        del result["tasks"][1]["score_by_seed"]
+        result["tasks"][1]["candidates"] = {
+            s: "Led the migration." for s in (0, 1, 2)}
+        with pytest.raises(CapsNotReproducible) as exc:
+            seed_scores(result, 3)
+        message = str(exc.value)
+        assert "1 of 2 tasks" in message
+        assert "blends" in message
+
+    def test_the_mixed_refusal_reaches_analyse(self):
+        result = self._two_task_result()
+        del result["tasks"][1]["score_by_seed"]
+        with pytest.raises(CapsNotReproducible):
+            analyse({"backend": "b", "synthetic": False, "results": [result]})
+
+    def test_a_fully_recorded_set_is_not_refused(self):
+        result = self._two_task_result()
+        assert seed_scores(result, 3) == [5.0, 5.0, 5.0]
+
+    def test_a_fully_unrecorded_set_is_not_refused(self):
+        result = self._two_task_result()
+        for task in result["tasks"]:
+            del task["score_by_seed"]
+        assert seed_scores(result, 3) == [5.0, 5.0, 5.0]
+
+    def test_an_empty_task_set_is_not_mixed(self):
+        """Neither recorded nor unrecorded. Not a mix, and the empty-set path
+        in seed_scores is left to answer for it."""
+        result = self._two_task_result()
+        result["tasks"] = []
+        assert seed_scores(result, 3) == [0.0, 0.0, 0.0]
+
+
 class TestSignalVersusNoise:
     def test_large_gap_is_supported(self):
         a = analyse(make_report([
