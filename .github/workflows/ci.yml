@@ -51,6 +51,12 @@ jobs:
         run: |
           pytest tests/test_layer3_judge.py -v
 
+      - name: Run the placeholder classification rules
+        # The classifier decides whether a placeholder occupies a structural
+        # slot. Its rules are the scoring contract for the caps added later.
+        run: |
+          pytest tests/test_layer3_placeholder_rules.py -v
+
       - name: Run Layer 3 Variance Analyser Tests
         # Guards the rule that a judged number is only a result if it exceeds
         # judge noise. The analyser has shipped two inverted answers already.

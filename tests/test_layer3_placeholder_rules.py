@@ -44,14 +44,27 @@ def test_formula_variable_is_scaffolding(fragment, expected_total):
 
 # --- trigger 2: formula-governed slot --------------------------------------
 
-def test_placeholder_directly_after_standalone_by_is_scaffolding():
-    r = classify("cut cycle time by [N] days")
+def test_placeholder_directly_after_measured_by_is_scaffolding():
+    # "[RATE]" is not a formula variable and "rate" is not an instruction verb,
+    # so only trigger 2 can classify it.
+    r = classify("reduced defects as measured by [RATE]")
+    assert r["total"] == 1, r
     assert r["scaffolded"] == 1, r
 
 
+def test_placeholder_not_after_measured_by_is_not_scaffolding():
+    """The phrase has to immediately precede. One clause later is not a slot."""
+    r = classify("reduced defects, as measured by the team, through [N] audits")
+    assert r["total"] == 1, r
+    assert r["scaffolded"] == 0, r
+    assert r["named"] == 1, r
+
+
 def test_placeholder_not_after_by_is_named():
-    # "recovered by the team" -- the "by" is far away and governs a different
-    # phrase. A proximity window would wrongly fire here.
+    # A bare "by" names a quantity slot, not a formula one: "cut cycle time by
+    # [N] days" and "reducing manual effort by [N] hours per week" are the same
+    # construction. An earlier rule read any of them as scaffolding and then had
+    # to carve out whichever example it had not seen.
     r = classify("Led the recovery, recovering [N] accounts and closing the backlog")
     assert r["total"] == 1, r
     assert r["scaffolded"] == 0, r
@@ -71,9 +84,22 @@ def test_writer_instruction_is_scaffolding(fragment):
     assert r["scaffolded"] == 1, r
 
 
+def test_your_marker_alone_makes_a_bracket_scaffolding():
+    """The "your" guard is load-bearing, and it was not before.
+
+    "[your e.g. example here]" carries no instruction verb, so nothing but this
+    guard makes it scaffolding. It used to pass only because the dots defeated a
+    noun-phrase regex that no longer exists. Delete _WRITER_MARKER and this
+    fails; the rule that survives is the rule the code actually implements."""
+    r = classify("shipped [your e.g. example here]")
+    assert r["total"] == 1, r
+    assert r["scaffolded"] == 1, r
+    assert r["named"] == 0, r
+
+
 def test_bracket_used_as_a_noun_is_named():
-    """Review Focus 1: a bracketed word that merely starts with a verb is a
-    quantity name, not an instruction to the writer."""
+    """Review Focus 1: a bracketed word that names a quantity is not an
+    instruction to the writer, and nothing in "[budget]" looks like one."""
     r = classify("managed the [budget] line for the division")
     assert r["total"] == 1, r
     assert r["scaffolded"] == 0, r
@@ -85,6 +111,8 @@ def test_bracket_used_as_a_noun_is_named():
 @pytest.mark.parametrize("fragment,expected_total", [
     ("improving completion rates from [N]% to [M]%", 2),
     ("cutting completion time from [N] to [M] days", 2),
+    ("reducing manual effort by [N] hours per week", 1),
+    ("cut cycle time by [N] days", 1),
 ])
 def test_named_placeholders(fragment, expected_total):
     r = classify(fragment)
@@ -93,23 +121,37 @@ def test_named_placeholders(fragment, expected_total):
     assert r["named"] == expected_total, r
 
 
-def test_spec_worked_example_conflicts_with_the_standalone_by_trigger():
-    """Spec section 3.3 lists "reducing manual effort by [N] hours per week" as
-    named, and section 3.1 trigger 2 makes a placeholder directly after a
-    standalone "by" scaffolding. Both cannot hold: the two strings are the same
-    construction -- <verb> ... by [N] <unit> -- differing only in base verb
-    against gerund, which is not a distinction any rule may key on.
+@pytest.mark.parametrize("fragment", [
+    "[end-to-end cycle time]",
+    "[Q3 pipeline value]",
+    "[time-to-market]",
+    "[the budget]",
+])
+def test_quantity_named_by_the_output_is_named(fragment):
+    """A quantity the output names for itself is not an instruction.
 
-    Trigger 2 wins here because it is one of the three triggers the plan fixes,
-    and because test_placeholder_directly_after_standalone_by_is_scaffolding is
-    the only test that exercises it. This test exists so the disagreement is
-    pinned in the suite rather than settled silently; if the project decides
-    section 3.3 is the correct reading, this expectation and trigger 2 both
-    move, and the named list above takes this string back."""
-    r = classify("reducing manual effort by [N] hours per week")
+    These were the measured defect. The old rule inferred a noun from the
+    characters -- letters and spaces only -- so every hyphen or digit outside
+    that class escaped the inference and was called scaffolding, which is the
+    expensive direction to be wrong in. Scaffolding now needs positive evidence
+    of an instruction and the default is named."""
+    r = classify(f"improving {fragment} for the division")
     assert r["total"] == 1, r
-    assert r["scaffolded"] == 1, r
-    assert r["named"] == 0, r
+    assert r["scaffolded"] == 0, r
+    assert r["named"] == 1, r
+
+
+@pytest.mark.parametrize("fragment", [
+    "{N}",
+    "<N>",
+])
+def test_brace_and_angle_placeholder_forms_are_classified(fragment):
+    """PLACEHOLDER_RE also matches {..} and <..>, so the classifier must not be
+    square-bracket-specific."""
+    r = classify(f"improving completion rates from {fragment} percent")
+    assert r["total"] == 1, r
+    assert r["scaffolded"] == 0, r
+    assert r["named"] == 1, r
 
 
 def test_two_placeholders_around_one_quantity_are_both_named():
@@ -131,7 +173,10 @@ def test_two_placeholders_around_one_quantity_are_both_named():
 def test_counts_are_consistent(text):
     r = classify(text)
     assert r["total"] == r["named"] + r["scaffolded"], r
-    assert all(isinstance(r[k], int) for k in ("total", "named", "scaffolded")), r
+    # type(...) and not isinstance(...): bool is a subclass of int, so a count
+    # that came back True would satisfy isinstance and corrupt the arithmetic
+    # above without tripping this assertion.
+    assert all(type(r[k]) is int for k in ("total", "named", "scaffolded")), r
 
 
 @pytest.mark.parametrize("text", [

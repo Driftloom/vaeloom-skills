@@ -76,17 +76,17 @@ PASSIVE_MARKERS = (
 PLACEHOLDER_RE = re.compile(r"\[[^\]]*\]|\{[^}]*\}|<[^>]*>")
 
 # A placeholder is "scaffolding" when it occupies a structural slot rather than
-# naming a quantity. These are the triggers from spec section 3.1 and the complete
-# list -- a fourth would change behaviour that no decision covers.
+# naming a quantity. These are the three triggers from spec section 3.1 and the
+# complete list -- a fourth would change behaviour that no decision covers.
 _FORMULA_VARIABLE_RE = re.compile(r"^[XYZxyz]$")
-_STANDALONE_BY_RE = re.compile(r"\bby\s*$", re.IGNORECASE)
-# A bracket that names a quantity rather than instructing the writer. Checked
-# before the instruction trigger so "[budget]" is never read as "begin with a verb".
-_BRACKETED_NOUN_RE = re.compile(r"^(?:the\s+)?[a-z][a-z ]{0,24}$", re.IGNORECASE)
+_MEASURED_BY_RE = re.compile(r"\bas\s+measured\s+by\s*$", re.IGNORECASE)
 _INSTRUCTION_VERBS = {
     "insert", "add", "describe", "specify", "list", "name", "fill",
     "enter", "replace", "provide", "detail", "quantify",
 }
+# Not a verb, but a bracket opening with "your" addresses the writer rather than
+# naming a quantity, so it is scaffolding on the same footing as one.
+_WRITER_MARKER = "your"
 
 
 def classify_placeholders(text: str) -> dict:
@@ -96,30 +96,39 @@ def classify_placeholders(text: str) -> dict:
     slot? It does not judge whether the named quantity is a good thing to
     measure or whether the surrounding prose is good. Those remain the judge's.
 
-    The first trigger reads the bracket's own contents; the second reads the
-    text. A trigger that reads surrounding text reads only what immediately
-    precedes the placeholder -- never what follows it, and never at a distance --
-    because a proximity window misclassifies "recovered by the team, recovering
-    [N] accounts" as scaffolding.
+    Three triggers, any one sufficient, and named is the default when none
+    fires:
+
+      1. the contents are a formula variable -- [X], [Y], [Z];
+      2. the phrase "as measured by" immediately precedes it;
+      3. the first word of the contents is an instruction verb, or is "your",
+         which makes the bracket a note to the writer rather than a quantity.
+
+    The default is the half that matters. Scaffolding needs positive evidence of
+    an instruction, so a quantity the output names for itself -- "[end-to-end
+    cycle time]", "[time-to-market]" -- stays named. A rule that inferred a
+    noun from the shape of the characters classified those as scaffolding.
+
+    Only trigger 2 reads surrounding text, and it reads only what immediately
+    precedes the placeholder -- never what follows it, and never at a distance.
     """
     total = named = scaffolded = 0
     for match in PLACEHOLDER_RE.finditer(text):
         total += 1
         inner = match.group(0)[1:-1].strip()
-        before = text[: match.start()].rstrip()
         if _FORMULA_VARIABLE_RE.match(inner):
             scaffolded += 1
             continue
-        if _STANDALONE_BY_RE.search(before):
+        before = text[: match.start()].rstrip()
+        if _MEASURED_BY_RE.search(before):
             scaffolded += 1
             continue
-        lowered = inner.lower()
-        if lowered and _BRACKETED_NOUN_RE.match(inner) and not lowered.startswith("your"):
-            # "[budget]" names a quantity; "[add metric]" tells the writer to act.
-            if lowered.split()[0] not in _INSTRUCTION_VERBS:
-                named += 1
-                continue
-        scaffolded += 1
+        words = inner.lower().split()
+        head = words[0] if words else ""
+        if head in _INSTRUCTION_VERBS or head == _WRITER_MARKER:
+            scaffolded += 1
+            continue
+        named += 1
     return {"total": total, "named": named, "scaffolded": scaffolded}
 
 
