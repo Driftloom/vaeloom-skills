@@ -596,19 +596,13 @@ class TestPlaceholderEvidenceIsShownToTheJudge:
         )
         assert "placeholders: 2 total, 0 named, 2 scaffolding" in prompt
 
-    def test_the_placeholders_line_is_exactly_the_counts_and_nothing_else(self):
-        """The whole line is pinned, not a fragment of it.
+    def _rendered_counts_row(self, text):
+        """The prompt row this text renders, and the counts it was built from.
 
-        A substring assertion still passes when an instruction is appended to the
-        counts, which is the exact leak this work exists to prevent. The expected
-        line is built from the evidence dict the prompt was built with, so a
-        prompt that hardcoded the numbers or reordered them fails here too.
-
-        The input carries one scaffolding and one named placeholder on purpose:
-        that makes the three counts distinct, so none of them can pass by
-        coincidence.
+        One call so the row under test and the evidence dict the prompt was
+        given are produced by the same code path, with no chance of the test
+        asserting against a dict it assembled separately.
         """
-        text = "improving [X] by [end-to-end cycle time]"
         evidence = layer3.mechanical_evidence(text, {"must_not_fabricate": False})
         prompt = layer3.build_prompt(
             task={"input": "x", "judge_question": "q"},
@@ -616,16 +610,63 @@ class TestPlaceholderEvidenceIsShownToTheJudge:
             evidence=evidence,
             candidate=text,
         )
-        line = next(
-            row for row in prompt.splitlines()
-            if row.strip().startswith("placeholders:")
+        row = next(
+            line for line in prompt.splitlines()
+            if line.strip().startswith("placeholders:")
         )
-        counts = evidence["placeholders"]
-        assert line.strip() == (
-            f"placeholders: {counts['total']} total, "
+        return row, evidence["placeholders"]
+
+    def test_the_placeholders_line_is_exactly_the_counts_and_nothing_else(self):
+        """The whole row is pinned, indentation included, not a fragment of it.
+
+        A substring assertion still passes when an instruction is appended to the
+        counts, which is the exact leak this work exists to prevent. The expected
+        row is built from the evidence dict the prompt was built with, so a
+        prompt that reordered the three fields fails here.
+
+        The input is chosen for the numbers it produces, asserted below:
+        {total: 3, named: 2, scaffolded: 1}. All three differ, so transposing
+        any two of them changes the rendered row. An input whose named and
+        scaffolded counts were equal would not: swapping those two fields would
+        leave the row identical and the test would pass on a broken prompt.
+        """
+        row, counts = self._rendered_counts_row(
+            "improving [X] by [end-to-end cycle time] and [p99 latency]"
+        )
+        assert counts == {"total": 3, "named": 2, "scaffolded": 1}
+        assert row == (
+            f"  placeholders: {counts['total']} total, "
             f"{counts['named']} named, "
             f"{counts['scaffolded']} scaffolding"
         )
+
+    def test_the_rendered_counts_follow_the_evidence_they_come_from(self):
+        """The row tracks its input rather than being a constant.
+
+        A prompt that emitted one hardcoded row would satisfy the test above for
+        its single input and fail here, on a second input whose counts differ in
+        every field.
+        """
+        first_row, first_counts = self._rendered_counts_row(
+            "improving [X] by [end-to-end cycle time] and [p99 latency]"
+        )
+        second_row, second_counts = self._rendered_counts_row(
+            "cut p99 latency to [end-to-end cycle time] with [X], "
+            "[your dashboard] and [insert the metric]"
+        )
+        assert first_counts == {"total": 3, "named": 2, "scaffolded": 1}
+        assert second_counts == {"total": 4, "named": 1, "scaffolded": 3}
+        assert first_row == (
+            f"  placeholders: {first_counts['total']} total, "
+            f"{first_counts['named']} named, "
+            f"{first_counts['scaffolded']} scaffolding"
+        )
+        assert second_row == (
+            f"  placeholders: {second_counts['total']} total, "
+            f"{second_counts['named']} named, "
+            f"{second_counts['scaffolded']} scaffolding"
+        )
+        assert first_row != second_row
 
     def test_prompt_contains_no_cap_instruction(self):
         """Secondary net: no scoring instruction anywhere in the prompt.
