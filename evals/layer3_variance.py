@@ -51,24 +51,52 @@ def _cap_helpers():
     A local copy of the cap rule here is precisely the drift this module exists
     to catch: the analyser would go on reporting numbers the harness never
     emitted, and the gate would certify a disagreement it had created.
+
+    Two import forms because there are two ways in, and a single one does not
+    cover both: imported as part of the `evals` package the module is
+    `evals.layer3_judge`, and run as a script (`python evals/layer3_variance.py`)
+    the repo root is not on sys.path at all, so only the flat name resolves.
+    The package form is tried first so a test process shares one module object
+    with the rest of the suite rather than growing a third copy.
     """
-    evals = str(Path(__file__).resolve().parent)
-    if evals not in sys.path:
-        sys.path.insert(0, evals)
-    from layer3_judge import (
-        apply_placeholder_cap, classify_placeholders, worst_case_placeholders,
-    )
+    try:
+        from evals.layer3_judge import (
+            apply_placeholder_cap, classify_placeholders, worst_case_placeholders,
+        )
+    except ImportError:
+        from layer3_judge import (
+            apply_placeholder_cap, classify_placeholders, worst_case_placeholders,
+        )
     return apply_placeholder_cap, classify_placeholders, worst_case_placeholders
+
+
+class CapsNotReproducible(RuntimeError):
+    """A report claims to be capped and the analyser cannot reproduce the cap.
+
+    Raised instead of a number. Emitting an uncapped score for a capped report
+    is worse than refusing: the same report's own `mean_capped` would say 5.0
+    while this module said 10.0, and the disagreement is invisible in the
+    output because both look like ordinary scores.
+    """
 
 
 def report_is_capped(result: dict) -> bool:
     """Whether a harness with the placeholder caps produced these scores.
 
-    Every capped report carries mean_capped on every criterion and no pre-cap
-    report carries it at all, so its presence is an exact marker. A report that
-    predates the caps must be analysed uncapped: re-deriving the cap for it would
-    report numbers its own harness never emitted, which is the disagreement this
-    module is the gate against.
+    Any criterion anywhere carrying `mean_capped` marks the whole result as
+    capped. That is deliberately `any` and not `all`: a report that is halfway
+    through migration has some criteria capped and some not, and reading it as
+    uncapped would score the already-capped ones from their raw means -- the
+    uncapped number this module exists to refuse. Reading it as capped applies
+    the cap everywhere, and a criterion no cap ever touched passes through
+    unchanged. A report predating the caps carries the field nowhere, so
+    `any` over it is false and it is analysed uncapped, which is correct: for
+    those reports `mean` is what the total was computed from.
+
+    The trade is the price of `any` -- a result with a single stray
+    `mean_capped` is treated as capped throughout. That is the direction that
+    degrades into a refusal (`CapsNotReproducible`) rather than into a wrong
+    number, which is the only direction worth being wrong in.
     """
     return any(
         "mean_capped" in crit
@@ -99,43 +127,91 @@ def task_placeholders_by_seed(task: dict) -> dict:
     return out
 
 
+def _task_score_at_seed(task: dict, i: int, keys: list[str], capped_report: bool) -> float:
+    """One task's score at seed `i`, preferring the number the harness recorded.
+
+    Three cases, in the order they are trusted:
+
+    1. The harness recorded `score_by_seed`. Read it. This is the whole point:
+       the harness ran this model, so its number is the harness's number and
+       not a reconstruction that has to be kept in step with the harness by
+       hand.
+    2. No such field -- a report predating it, or one trimmed down to its
+       criteria. Recomputed here from the stored samples, capped only if the
+       report says it is capped. This is the same shape as the `mean_capped`
+       fallback in `analyse`: the field is the fast path, the recomputation is
+       the compatibility path, and both read `mean_capped` to decide.
+    3. A capped report whose task also carries no per-seed text. The cap cannot
+       be reproduced from anything, and the uncapped number this would produce
+       contradicts the report's own `mean_capped`. Refuse.
+
+    The fabrication veto is applied last on every path, including the
+    recomputation, so a vetoed task reads 0.0 whatever the cap produced.
+    """
+    recorded = task.get("score_by_seed")
+    if recorded is not None:
+        if i >= len(recorded):
+            raise CapsNotReproducible(
+                f"task {task.get('id')!r} records {len(recorded)} per-seed scores "
+                f"but seed {i} was requested; the report is inconsistent with the "
+                "seed count it is being analysed at"
+            )
+        return recorded[i]
+
+    if not capped_report:
+        return 0.0 if task["fabrication_vetoed"] else sum(
+            task["criteria"][k]["samples"][i] * task["criteria"][k]["weight"]
+            for k in keys
+        )
+
+    if not (task.get("candidates") or {}):
+        raise CapsNotReproducible(
+            f"task {task.get('id')!r} is part of a capped report but records "
+            "neither score_by_seed nor the per-seed text the cap is derived "
+            "from. Analysing it uncapped would contradict its own mean_capped."
+        )
+
+    apply_placeholder_cap, _, worst_case_placeholders = _cap_helpers()
+    worst = worst_case_placeholders({
+        s: {"placeholders": p}
+        for s, p in task_placeholders_by_seed(task).items()
+    })
+    score = sum(
+        apply_placeholder_cap(k, task["criteria"][k]["samples"][i], worst)
+        * task["criteria"][k]["weight"]
+        for k in keys
+    )
+    return 0.0 if task["fabrication_vetoed"] else score
+
+
 def seed_scores(result: dict, seeds: int) -> list[float]:
     """The skill's mean score computed one seed at a time.
 
-    Each seed's criterion sample passes through the placeholder cap first, so a
-    task the harness capped at 5.0 cannot read 10.0 here. Without that this
-    reported per-seed scores the harness never produced, and the seed-to-seed
-    swing that drives the signal-versus-noise verdict was computed against a
-    number that does not exist.
+    Reads the harness's own `score_by_seed` wherever the report carries it. The
+    classification used to be recomputed here from the stored candidate text,
+    which meant the analyser reached its signal-versus-noise verdict through a
+    scoring model the harness never ran -- the harness caps a criterion's
+    aggregated mean, this capped each sample. Both are defensible alone, and
+    the disagreement between them is the one shape of drift this module exists
+    to catch, so the number is taken rather than reconstructed.
 
-    The classification is worst-case across seeds, as in the harness, so the cap
-    a seed is subject to is the one the harness would have applied to it. A cap
-    computed per seed in isolation would let a clean generation escape a
-    scaffolded sibling, which is the same defect the harness aggregation was
-    changed to fix.
+    Recomputation survives only for reports predating the field, and is the
+    same shape as the `mean_capped` fallback in `analyse`. A capped report whose
+    task offers nothing to recompute from raises `CapsNotReproducible` rather
+    than reporting an uncapped score.
 
-    The veto still wins: a fabricating task reads 0.0 whatever the cap produced,
-    because one fabricating generation out of three is meant to zero the task.
+    The veto still wins: a fabricating task reads 0.0 whatever the cap
+    produced, because one fabricating generation out of three is meant to zero
+    the task.
     """
-    apply_placeholder_cap, _, worst_case_placeholders = _cap_helpers()
     keys = weighted_criteria(result)
     capped_report = report_is_capped(result)
     out = []
     for i in range(seeds):
-        per_task = []
-        for task in result["tasks"]:
-            worst = {"total": 0, "scaffolded": 0}
-            if capped_report:
-                worst = worst_case_placeholders({
-                    s: {"placeholders": p}
-                    for s, p in task_placeholders_by_seed(task).items()
-                })
-            score = sum(
-                apply_placeholder_cap(k, task["criteria"][k]["samples"][i], worst)
-                * task["criteria"][k]["weight"]
-                for k in keys
-            )
-            per_task.append(0.0 if task["fabrication_vetoed"] else score)
+        per_task = [
+            _task_score_at_seed(task, i, keys, capped_report)
+            for task in result["tasks"]
+        ]
         out.append(st.mean(per_task) if per_task else 0.0)
     return out
 
@@ -360,8 +436,14 @@ def main() -> int:
                     help="a second report, e.g. a 1-seed run against a 3-seed one")
     args = ap.parse_args()
 
-    a = analyse(json.loads(args.report.read_text(encoding="utf-8")))
-    b = analyse(json.loads(args.compare.read_text(encoding="utf-8"))) if args.compare else None
+    try:
+        a = analyse(json.loads(args.report.read_text(encoding="utf-8")))
+        b = analyse(json.loads(args.compare.read_text(encoding="utf-8"))) if args.compare else None
+    except CapsNotReproducible as exc:
+        # Refusing has to be visible from the command line, or the exit status
+        # is the only signal and a reader running this by hand sees nothing.
+        print(f"REFUSING TO ANALYSE: {exc}", file=sys.stderr)
+        return 1
     render(a, b)
     return 0
 

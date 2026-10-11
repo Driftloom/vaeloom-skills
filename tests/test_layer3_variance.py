@@ -12,7 +12,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from evals.layer3_variance import analyse, seed_scores, weighted_criteria
+from evals.layer3_judge import evaluate_skill
+from evals.layer3_variance import (
+    CapsNotReproducible, analyse, main, report_is_capped, seed_scores,
+    weighted_criteria,
+)
 
 
 WEIGHTED = {"truthfulness": 0.5, "agency": 0.3, "impact": 0.2}
@@ -117,11 +121,19 @@ class TestAnalyserAgreesWithTheHarnessOnCaps:
     """
 
     def _capped_task(self, *, include_score):
-        """One task: the judge said 10 everywhere, the cap put impact at 5."""
+        """One task: the judge said 10 everywhere, the cap put impact at 5.
+
+        Carries `candidates` and `score_by_seed` because evaluate_skill always
+        writes both. A capped task without them is a report the analyser now
+        refuses to read (see CapsNotReproducible), and a fixture that trips
+        that would test the refusal rather than the fallback.
+        """
         task = make_task("t1", [10] * 3, [10] * 3, [10] * 3,
                          fabrication_by_seed={"0": False, "1": False, "2": False})
         for key, capped in (("truthfulness", 10.0), ("agency", 10.0), ("impact", 5.0)):
             task["criteria"][key]["mean_capped"] = capped
+        task["candidates"] = {str(s): "cut cycle time by [N] days" for s in range(3)}
+        task["score_by_seed"] = [9.0, 9.0, 9.0]
         if include_score:
             task["score"] = round(sum(
                 c["mean_capped"] * c["weight"] for c in task["criteria"].values()
@@ -130,7 +142,11 @@ class TestAnalyserAgreesWithTheHarnessOnCaps:
         return task
 
     def test_fallback_uses_the_capped_mean_not_the_raw_one(self):
-        report = make_report([("s", [self._capped_task(include_score=False)])])
+        task = self._capped_task(include_score=False)
+        # Drop the field the harness records, leaving only the compatibility
+        # path, so this still tests the recomputation rather than the fast path.
+        del task["score_by_seed"]
+        report = make_report([("s", [task])])
         a = analyse(report)
         # 0.5*10 + 0.3*10 + 0.2*5 = 9.0. The raw mean would give 10.0.
         assert a["unvetoed_means"]["s"] == pytest.approx(9.0, abs=0.01)
@@ -152,13 +168,14 @@ class TestAnalyserAgreesWithTheHarnessOnCaps:
         assert a["unvetoed_means"]["s"] == pytest.approx(9.0, abs=0.01)
 
 
-class TestSeedScoresApplyTheCap:
-    """The per-seed view is a second reading of the same scored report.
+class TestSeedScoresFallbackRecomputesTheCap:
+    """The compatibility path: a report written before score_by_seed existed.
 
-    It exists to measure seed-to-seed swing, and the swing it reported was
-    computed from raw judge samples. A task the harness capped at 5.0 therefore
-    read 10.0 here, and this module -- the gate on the signal-versus-noise
-    claims -- was reporting a number its own harness never emitted.
+    These fixtures deliberately carry no per-seed field, so they reach the
+    recomputation. They are here because the two committed reports are in
+    exactly this state, and because the recomputation has to stay in step with
+    the harness for as long as it is reachable -- the drift this module exists
+    to catch is a recomputation that quietly stops agreeing.
     """
 
     def _task(self, text, *, vetoed=False, capped=True):
@@ -166,9 +183,9 @@ class TestSeedScoresApplyTheCap:
         task["candidates"] = {str(s): text for s in range(3)}
         task["fabrication_by_seed"] = {str(s): False for s in range(3)}
         if capped:
-            # A capped report carries mean_capped on every criterion; a pre-cap
-            # report carries none at all. That is what separates the two, and
-            # the cap is applied only to the former.
+            # A capped report carries mean_capped on at least one criterion; a
+            # pre-cap report carries none at all. That is what separates the
+            # two, and the cap is applied only to the former.
             for key in WEIGHTED:
                 task["criteria"][key]["mean_capped"] = 10.0
             task["criteria"]["impact"]["mean_capped"] = 5.0
@@ -208,7 +225,7 @@ class TestSeedScoresApplyTheCap:
             self._result(self._task("improving completion rates from [N]% to [M]%")),
             3,
         )
-        # 0.5*10 + 0.3*10 (agency uncapped) + 0.2*5 (impact capped)
+        # 0.5*10 (truthfulness uncapped) + 0.3*10 (agency uncapped) + 0.2*5
         assert got == [9.0, 9.0, 9.0]
 
     def test_scaffolding_caps_agency_too(self):
@@ -243,13 +260,212 @@ class TestSeedScoresApplyTheCap:
         got = seed_scores(self._result(task), 3)
         assert got == [7.5, 7.5, 7.5]
 
-    def test_a_task_with_no_candidates_is_uncapped_not_an_error(self):
-        """A minimal fixture has no per-seed text to classify, so no cap. It
-        reads uncapped rather than raising, which is the safe direction: the
-        seed-to-seed swing is still measurable."""
+    def test_a_capped_task_with_no_candidates_is_refused_not_uncapped(self):
+        """Replaces a test that pinned the opposite, and called it safe.
+
+        A capped report whose task carries no per-seed text has nothing the cap
+        can be reproduced from. The old behaviour read 10.0 per seed while the
+        same task's mean_capped said 5.0 -- this module reporting a number that
+        contradicted the report it was analysing, with both looking like ordinary
+        scores. Refusing is the only alternative that never emits it.
+        """
         task = self._task("cut cycle time by [N] days")
         del task["candidates"]
-        assert seed_scores(self._result(task), 3) == [10.0, 10.0, 10.0]
+        # The contradiction the refusal exists to prevent, stated as a fact
+        # about the fixture rather than as a sentence in a docstring.
+        assert task["criteria"]["impact"]["mean_capped"] == 5.0
+        assert task["criteria"]["impact"]["mean"] == 10.0
+        with pytest.raises(CapsNotReproducible, match="score_by_seed"):
+            seed_scores(self._result(task), 3)
+
+    def test_an_unanalysable_task_stops_the_whole_report(self):
+        """A refusal has to reach analyse(), not just seed_scores.
+
+        analyse() calls seed_scores for every skill, so one unreadable task must
+        stop the report rather than yield a verdict computed from the tasks that
+        happened to be readable.
+        """
+        task = self._task("cut cycle time by [N] days")
+        del task["candidates"]
+        with pytest.raises(CapsNotReproducible):
+            analyse(make_report([("s", [task])]))
+
+    def test_the_cli_reports_the_refusal_and_exits_non_zero(self, tmp_path, capsys,
+                                                             monkeypatch):
+        """A refusal that only shows as a non-zero exit code is invisible to
+        anyone running this by hand, which is how a number nobody can justify
+        would come back as a number."""
+        report = {"backend": "b", "synthetic": False, "results": [{
+            "skill": "s", "mean_score": 9.0, "seeds": 3,
+            "tasks": [self._task("cut cycle time by [N] days")],
+        }]}
+        del report["results"][0]["tasks"][0]["candidates"]
+        path = tmp_path / "unreadable.json"
+        path.write_text(json.dumps(report), encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["layer3_variance.py", str(path)])
+        assert main() == 1
+        assert "REFUSING TO ANALYSE" in capsys.readouterr().err
+
+
+class TestReportIsCapped:
+    """report_is_capped decides which reading of a report is the honest one.
+
+    Wrong in the uncapped direction it scores already-capped criteria from their
+    raw means; wrong in the capped direction it applies a cap a pre-cap report
+    never ran. It is `any`, not `all`, and these pin that on both sides.
+    """
+
+    def _result(self, *, capped_keys):
+        task = make_task("t1", [10] * 3, [10] * 3, [10] * 3)
+        for key in capped_keys:
+            task["criteria"][key]["mean_capped"] = task["criteria"][key]["mean"]
+        return {"tasks": [task]}
+
+    def test_a_pre_cap_report_is_not_capped(self):
+        """A report carrying the field nowhere is uncapped, and for it `mean`
+        is what the total was computed from. Every committed report is here."""
+        assert report_is_capped(self._result(capped_keys=())) is False
+
+    def test_a_fully_capped_report_is_capped(self):
+        assert report_is_capped(self._result(capped_keys=list(WEIGHTED))) is True
+
+    def test_a_half_migrated_report_counts_as_capped(self):
+        """Deliberate, and the opposite of what the old docstring claimed.
+
+        The field is written to every criterion or to none, so a partial
+        migration cannot come from a single harness version -- but if one is
+        ever seen, reading it as uncapped would score the already-capped
+        criterion from its raw mean, which is the uncapped number this module
+        must never emit. Reading it as capped applies the cap everywhere
+        instead, and criteria no cap touched pass through unchanged. `any` is
+        chosen for the direction it fails in: a refusal, not a number.
+        """
+        task = make_task("t1", [10] * 3, [10] * 3, [10] * 3)
+        task["candidates"] = {str(s): "cut cycle time by [N] days" for s in range(3)}
+        task["criteria"]["impact"]["mean_capped"] = 5.0  # truthfulness/agency bare
+        result = {"tasks": [task]}
+
+        assert report_is_capped(result) is True
+        assert "mean_capped" not in task["criteria"]["truthfulness"]
+        # Capped throughout: impact reads 5.0, the two uncapped criteria read
+        # their own 10.0, so 0.5*10 + 0.3*10 + 0.2*5 = 9.0.
+        assert seed_scores(result, 3) == [9.0, 9.0, 9.0]
+
+
+class TestHarnessAndAnalyserAgree:
+    """The analyser reports the harness's number rather than rebuilding it.
+
+    Constructed through evaluate_skill and fed to seed_scores, so the agreement
+    is demonstrated on a result the harness actually produced rather than assumed
+    from both sides importing the same functions.
+    """
+
+    SPEC = {"tasks": [{
+        "id": "t1", "split": "held_out", "label": "t",
+        "input": "Led the migration of the legacy warehouse.",
+        "judge_question": "Is the outcome stated?",
+        "mechanical_expectations": {"must_not_fabricate": True,
+                                    "source_has_no_metric": True},
+    }]}
+
+    def _harness_result(self, candidate, scores, criterion="impact"):
+        class Backend:
+            name, synthetic = "fixed", False
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return candidate
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": scores[seed], "rationale": "fixed"}
+
+        rubric = {"criteria": [
+            {"key": criterion, "label": criterion.capitalize(),
+             "weight": 1.0, "anchors": {}},
+        ]}
+        return evaluate_skill(
+            "resume-bullet-writer", self.SPEC, rubric, Backend(), "held_out",
+            len(scores),
+        )
+
+    def test_seed_scores_reproduces_a_harness_result_exactly(self):
+        result = self._harness_result("cut cycle time by [N] days", [10, 10, 4])
+        task = result["tasks"][0]
+        # The harness capped the mean of [10, 10, 4] to 5.0; per seed the same
+        # ceiling gives 5, 5, 4. Two readings, both the harness's.
+        assert task["score"] == 5.0
+        assert task["score_by_seed"] == [5.0, 5.0, 4.0]
+        assert seed_scores(result, 3) == task["score_by_seed"]
+
+    def test_the_analyser_reports_a_harness_number_the_report_does_not_justify(self):
+        """The case the recorded field exists for.
+
+        Strip the per-seed text and the report can no longer justify any
+        per-seed number, because the cap is derived from that text. The
+        recorded field is the only remaining source. If seed_scores recomputed
+        instead it would either refuse here or -- without the refusal -- emit
+        10.0 against the task's own mean_capped of 5.0.
+        """
+        result = self._harness_result("cut cycle time by [N] days", [10, 10, 4])
+        del result["tasks"][0]["candidates"]
+        assert seed_scores(result, 3) == [5.0, 5.0, 4.0]
+
+    def test_a_pre_field_report_still_falls_back(self):
+        """The compatibility path, on a real harness result with the field
+        removed rather than a hand-built fixture."""
+        result = self._harness_result("cut cycle time by [N] days", [10, 10, 4])
+        del result["tasks"][0]["score_by_seed"]
+        assert seed_scores(result, 3) == [5.0, 5.0, 4.0]
+
+    def test_a_vetoed_task_records_zero_for_every_seed(self):
+        result = self._harness_result(
+            "cut cycle time by [N] days and cut costs 15-20%", [10, 10, 10])
+        task = result["tasks"][0]
+        assert task["fabrication_vetoed"] is True
+        assert task["score"] == 0.0
+        assert task["score_by_seed"] == [0.0, 0.0, 0.0]
+        assert seed_scores(result, 3) == [0.0, 0.0, 0.0]
+
+    def test_the_per_seed_view_never_exceeds_the_task_total(self):
+        """The cap is a ceiling applied before averaging, so averaging the
+        capped samples cannot land above the capped mean. This is the invariant
+        that makes `score` and `score_by_seed` two readings of one model rather
+        than two answers to one question, and it is why neither may be
+        substituted for the other by hand.
+        """
+        for candidate, scores in (
+            ("cut cycle time by [N] days", [10, 10, 4]),
+            ("improving [X] as measured by [Y] by [Z]", [10, 0, 6]),
+            ("Led the migration of the legacy warehouse.", [10, 10, 10]),
+        ):
+            result = self._harness_result(candidate, scores)
+            task = result["tasks"][0]
+            mean_of_seeds = sum(task["score_by_seed"]) / len(task["score_by_seed"])
+            assert mean_of_seeds <= task["score"] + 1e-9, (candidate, task)
+
+    def test_the_per_seed_view_and_the_total_are_not_the_same_number(self):
+        """Pins the divergence rather than leaving it to be discovered.
+
+        samples [10, 10, 4]: the capped mean is 5.0, the mean of the capped
+        samples is 4.67. Both are correct and they are not interchangeable. A
+        reader who assumed they were would 'reconcile' a 0.33 gap that is not a
+        bug -- which is precisely how this project produced its one false result.
+        """
+        result = self._harness_result("cut cycle time by [N] days", [10, 10, 4])
+        task = result["tasks"][0]
+        assert task["criteria"]["impact"]["samples"] == [10, 10, 4]
+        assert task["criteria"]["impact"]["mean"] == 8.0
+        assert task["criteria"]["impact"]["mean_capped"] == 5.0
+        assert task["score"] == 5.0
+        assert sum(task["score_by_seed"]) / 3 == pytest.approx(4.67, abs=0.01)
+
+    def test_a_recorded_field_shorter_than_the_seed_count_is_refused(self):
+        """A report whose per-seed field cannot answer every seed asked about is
+        inconsistent with itself, and reading past its end would be an
+        IndexError at best."""
+        result = self._harness_result("Led the migration.", [10, 10, 10])
+        result["tasks"][0]["score_by_seed"] = [10.0, 10.0]
+        with pytest.raises(CapsNotReproducible, match="seed 2"):
+            seed_scores(result, 3)
 
 
 class TestSignalVersusNoise:

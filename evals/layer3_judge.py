@@ -547,6 +547,35 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
             # A fabrication veto cannot be outvoted by a confident judge.
             total = 0.0
 
+        # The same capped model read one seed at a time, recorded here rather
+        # than left for the analyser to reconstruct. It used to build this
+        # itself, which is how two places ended up computing "the same" task
+        # total by different rules: the analyser capped each sample while this
+        # function caps the mean. Both are defensible alone; neither is a
+        # result if only one of them is true. Index-aligned with `samples`.
+        #
+        # Recorded, not derived from `total`: the cap is a ceiling applied
+        # before averaging, so mean-of-capped-samples is below
+        # capped-mean whenever the seeds straddle the cap, and the two are not
+        # decompositions of one another. Both numbers are honest readings of
+        # the same criteria -- `score` for the task, `score_by_seed` for the
+        # swing between generations.
+        score_by_seed = []
+        for i in range(seeds):
+            seed_total = sum(
+                apply_placeholder_cap(
+                    criterion["key"],
+                    criteria_scores[criterion["key"]]["samples"][i],
+                    placeholders,
+                )
+                * criteria_scores[criterion["key"]]["weight"]
+                for criterion in rubric["criteria"]
+                if criteria_scores[criterion["key"]]["weight"] > 0
+            )
+            # The veto last, exactly as above, so a vetoed task reads 0.0 here
+            # too rather than carrying a per-seed score the task does not have.
+            score_by_seed.append(0.0 if fabrication else round(seed_total, 2))
+
         per_task.append({
             "id": task["id"],
             "split": task["split"],
@@ -555,6 +584,7 @@ def evaluate_skill(skill: str, spec: dict, rubric: dict, backend, split: str, se
             "fabrication_by_seed": fabrication_by_seed,
             "criteria": criteria_scores,
             "score": total,
+            "score_by_seed": score_by_seed,
             "fabrication_vetoed": fabrication,
             "unstable_criteria": [k for k, v in criteria_scores.items() if v["unstable"]],
         })

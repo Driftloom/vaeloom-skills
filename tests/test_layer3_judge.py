@@ -810,22 +810,17 @@ class TestPlaceholderCaps:
         assert t["criteria"]["impact"]["mean_capped"] == self.CAP
         assert t["criteria"]["impact"]["mean"] == 10.0
 
-    def test_cap_applies_to_the_mean_not_to_each_seed(self):
+    def test_the_cap_lands_on_the_aggregated_mean_of_disagreeing_seeds(self):
         """Clamping three seeds of 10 and averaging gives 5.0; clamping the mean
         of 10 gives 5.0 too. They differ once seeds disagree: samples
-        [10, 10, 4] must clamp to 5.0, not to the mean of [5, 5, 4]."""
-        assert layer3.apply_placeholder_cap(
-            "impact", 8.0, {"total": 1, "named": 1, "scaffolded": 0}
-        ) == self.CAP
+        [10, 10, 4] must clamp to 5.0, not to the mean of [5, 5, 4].
 
-    def test_the_cap_lands_on_the_aggregated_mean_of_disagreeing_seeds(self):
-        """The case above states this rule but cannot enforce it: it calls the
-        function directly with a literal, so a per-seed implementation returns
-        the same 5.0 and the test never sees a difference.
-
-        Here the seeds genuinely disagree. Clamping each sample first gives
-        mean([5, 5, 4]) = 4.67; clamping the aggregate mean gives min(8.0, 5)
-        = 5.0. Only one of those satisfies the assertion below.
+        This test is also where that rule can actually be enforced. A sibling
+        test stated it and called the function with a literal, so a per-seed
+        implementation returned the same 5.0 and it never saw a difference; it
+        has been folded in here rather than left alongside a claim it did not
+        test. The direct call survives as the last assertion, where it pins the
+        function's own answer on the same 8.0 mean this test drives end to end.
         """
 
         class Disagreeing:
@@ -858,6 +853,11 @@ class TestPlaceholderCaps:
         assert task["criteria"]["impact"]["mean"] == 8.0
         assert task["criteria"]["impact"]["mean_capped"] == self.CAP
         assert task["score"] == self.CAP
+        # The same mean through the function itself, which is what the folded-in
+        # assertion used to check on its own -- and could not distinguish.
+        assert layer3.apply_placeholder_cap(
+            "impact", 8.0, {"total": 1, "named": 1, "scaffolded": 0}
+        ) == self.CAP
 
     # --- the clamp reads the worst case across seeds, not seed 0 -------------
 
@@ -938,3 +938,69 @@ class TestPlaceholderCaps:
     def test_worst_case_placeholders_of_nothing_is_zero_not_an_error(self):
         """A task judged with no seeds must not raise out of the clamp path."""
         assert layer3.worst_case_placeholders({}) == {"total": 0, "scaffolded": 0}
+
+    # --- the per-seed view the analyser used to build for itself -----------
+
+    def test_every_task_records_a_score_for_every_seed(self):
+        """The field the analyser reads instead of rebuilding the number.
+
+        Without it the analyser capped each sample on its own, and the
+        signal-versus-noise verdict was reached through a scoring model this
+        function never ran. Recorded here, the two cannot drift into a second
+        such place.
+        """
+        t = self._run("cut cycle time by [N] days", 10, "impact")
+        assert t["score_by_seed"] == [self.CAP, self.CAP, self.CAP]
+        assert len(t["score_by_seed"]) == len(t["criteria"]["impact"]["samples"])
+
+    def test_the_recorded_per_seed_score_applies_the_cap_per_sample(self):
+        """Seeds scoring 10, 10 and 4: capped samples read 5, 5 and 4, so the
+        per-seed view is not a copy of the task total. That divergence is the
+        point -- the two are readings of the same capped criteria, at different
+        resolutions, and neither is a decomposition of the other."""
+        assert self._recorded("cut cycle time by [N] days", [10, 10, 4]) == [5.0, 5.0, 4.0]
+
+    def test_a_low_sample_is_not_raised_by_the_per_seed_cap(self):
+        """Ceiling, not a floor, on the per-seed path as well. A judge that
+        already scored a seed low is reporting a real deficiency."""
+        assert self._recorded("cut cycle time by [N] days", [2, 2, 2]) == [2.0, 2.0, 2.0]
+
+    def test_a_clean_output_records_the_uncapped_per_seed_score(self):
+        assert self._recorded("Led the migration of the legacy warehouse.",
+                              [10, 10, 10]) == [10.0, 10.0, 10.0]
+
+    def test_the_fabrication_veto_is_applied_last_to_the_per_seed_score(self):
+        """Same rule as the task total, on the per-seed path.
+
+        A fabricating task reads 0.0 for every seed, not the 5.0 the cap would
+        leave behind. Applying the veto before the recorded loop would leave a
+        per-seed score for a task the veto has already zeroed.
+        """
+        t = self._run("cut cycle time by [N] days and cut costs 15-20%", 10, "impact")
+        assert t["fabrication_vetoed"] is True
+        assert t["score_by_seed"] == [0.0, 0.0, 0.0]
+
+    def _recorded(self, candidate, scores):
+        """One task through evaluate_skill, with the judge varying by seed."""
+        class Varying:
+            name, synthetic = "fixed", False
+
+            def generate(self, *, skill_doc, task_input, seed):
+                return candidate
+
+            def judge(self, *, task_id, criterion, prompt, seed):
+                return {"score": scores[seed], "rationale": "varying"}
+
+        spec = {"tasks": [{
+            "id": "t1", "split": "held_out", "label": "t",
+            "input": "Led the migration of the legacy warehouse.",
+            "judge_question": "Is the outcome stated?",
+            "mechanical_expectations": {"must_not_fabricate": True,
+                                        "source_has_no_metric": True},
+        }]}
+        rubric = {"criteria": [
+            {"key": "impact", "label": "Impact", "weight": 1.0, "anchors": {}},
+        ]}
+        return layer3.evaluate_skill(
+            "resume-bullet-writer", spec, rubric, Varying(), "held_out", 3
+        )["tasks"][0]["score_by_seed"]
