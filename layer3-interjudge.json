@@ -1,13 +1,13 @@
 {
   "second_judge": "openai/gpt-oss-120b",
   "compared": 30,
-  "exact_agreement_pct": 70.0,
-  "mean_abs_delta": 2,
+  "exact_agreement_pct": 76.7,
+  "mean_abs_delta": 1.67,
   "worst_delta": 10,
   "per_criterion_mean_delta": {
     "truthfulness": 1,
     "agency": 2.5,
-    "impact": 2.5
+    "impact": 1.5
   },
   "weakest_criterion": "agency",
   "pairs": [
@@ -51,7 +51,7 @@
       "task": "rbw-train-02",
       "criterion": "impact",
       "primary": 0,
-      "second": 5
+      "second": 0
     },
     {
       "skill": "resume-bullet-writer",
@@ -92,7 +92,7 @@
       "skill": "resume-bullet-writer",
       "task": "rbw-held-02",
       "criterion": "impact",
-      "primary": 5,
+      "primary": 0,
       "second": 5
     },
     {
@@ -135,7 +135,7 @@
       "task": "rq-train-02",
       "criterion": "impact",
       "primary": 0,
-      "second": 5
+      "second": 0
     },
     {
       "skill": "resume-quantifier",
@@ -156,7 +156,7 @@
       "task": "rq-held-01",
       "criterion": "impact",
       "primary": 0,
-      "second": 5
+      "second": 0
     },
     {
       "skill": "resume-quantifier",

@@ -11,6 +11,12 @@ optimises against exactly this kind of signal.
 > first reading rather than a baseline. See the two sections below for what the
 > number does and does not support.
 >
+> **Regenerated under the placeholder caps (see "One stated placeholder
+> policy").** Fabrication is **0.0%** (0 of 30). A second model family agrees on
+> **76%** of judgements. On fresh candidates neither judge had seen, agreement
+> was **67%** and `impact` divergence rose to **3.00** — the caps did not
+> generalise.
+>
 > A previous revision of this file stated that no provider credentials were
 > configured and that every run was synthetic. That was wrong: the keys live in
 > the API app's `.env` (`OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, `OLLAMA_MODEL`), which
@@ -102,41 +108,51 @@ python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report
 
 | | 1 seed | 3 seeds | shift |
 |---|---|---|---|
-| `resume-bullet-writer` | 6.11 | 6.11 | 0.00 |
+| `resume-bullet-writer` | 5.81 | 6.13 | +0.32 |
 | `resume-quantifier` | 6.47 | 6.47 | 0.00 |
-| **Overall** | **6.29** | **6.29** | **0.00** |
+| **Overall** | **6.14** | **6.30** | **+0.16** |
 
-The two runs agree exactly. That is the reproducibility check working as intended
-at `temperature 0.0`, not two independent samples — see the note below on why
-`--seeds` is not a variance estimate at this temperature.
+These two runs no longer agree exactly: the 1-seed report gives
+`resume-bullet-writer` **5.81** where the 3-seed report gives **6.13**. The
+earlier revision of this table read 6.11 against 6.11 with a 0.00 shift and
+called that agreement a working reproducibility check. Re-running the same
+commands did not reproduce it — see "The determinism claim in this document no
+longer holds as written" below, which records the same finding from the other
+direction. `--seeds` is not a variance estimate at this temperature, so the
+spread between these two runs is generator instability, not sampling error.
 
 The task set grew from 8 to 10 once the fix landed — see the section on the sourced-number
 tasks below, which exist because a 0% fabrication rate is also what a broken skill
 would report.
 
-- **Ordering is supported.** The gap is 1.47 against a seed-to-seed swing of `0.0`:
-  the judge returned identical scores for all three seeds. Real, but on 10 tasks
-  with 2 skills it is weak evidence, not a confident ranking.
-- **The judge was fully self-consistent on this run.** 0 of 30 criterion-task pairs
-  returned the full `0`–`10` range, against 2 of 24 before the skill documents
-  changed. With `truthfulness` no longer flipping between 0 and 10 on the same
-  artifact, the criterion is discriminating more sharply. Note this is
-  *self*-consistency; the cross-model comparison below is the harder test.
+- **Ordering is not supported.** The gap is 0.34 against a seed-to-seed swing of
+  0.66 — a ratio of 0.5×, so the gap is inside the noise. No ranking is asserted.
+- **The judge is not self-consistent on this run.** 1 of 30 criterion-task pairs
+  returned the full `0`–`10` range (`rbw-train-01` `agency`, samples
+  `[5.81, 6.47, 6.11]` at the skill level and `[0, 10, 0]` on the criterion),
+  against 0 of 30 on the previous run and 2 of 24 before the skill documents
+  changed. Note this is *self*-consistency; the cross-model comparison below is
+  the harder test.
 - **Fabrication is 0.0% per generation** (0 of 30), down from 25.0% (6 of 24).
 
 ### `--seeds` at temperature 0.0 is a reproducibility check, not a variance sample
 
-The live judge runs at `temperature: 0.0`, so the same input returns the same score.
-The per-seed skill means are `[6.11, 6.11, 6.11]` and `[6.47, 6.47, 6.47]` — no
-criterion moves at all. So the seeds confirm the harness is repeatable; they do
-**not** sample the judge's distribution. `--judge-temperature > 0` exists so that
-measurement is available when it is wanted, and
-`test_judge_temperature_is_carried_into_the_request` pins that the flag reaches
-the request rather than being a constant.
+The live judge is called at `temperature: 0.0`. An earlier revision of this
+document asserted that this makes the run exactly repeatable, quoting per-seed
+skill means of `[6.11, 6.11, 6.11]` and `[6.47, 6.47, 6.47]` with no criterion
+moving at all. **That assertion did not survive re-measurement.** The
+regenerated 3-seed report gives `[5.81, 6.47, 6.11]` for `resume-bullet-writer`
+— 4 of 40 criteria vary across seeds — against `[6.47, 6.47, 6.47]` for
+`resume-quantifier`, which is still flat. The provider is not byte-stable at
+temperature 0.0 even with a fixed seed, so `--seeds` does not confirm
+repeatability here; it partly measures the provider's own nondeterminism.
+`--judge-temperature > 0` exists so that the judge's distribution can be sampled
+when it is wanted, and `test_judge_temperature_is_carried_into_the_request`
+pins that the flag reaches the request rather than being a constant.
 
-The between-skill gap is now **0.37** with a seed swing of `0.0`. That is far too
-small to rank two skills on 10 tasks, and the ordering reversed when the `agency`
-anchors tightened — which is why no ordering is asserted anywhere in this project.
+The between-skill gap is now **0.34** with a seed swing of 0.66. The ordering
+reversed when the `agency` anchors tightened, and it is no longer supported at
+all — which is why no ordering is asserted anywhere in this project.
 
 An earlier revision of this document claimed a single seed understated fabrication
 (`7.35` against `5.64`). That was a genuine observation, but it was an artefact of
@@ -159,6 +175,15 @@ overall mean would have said these are bad writers and sent the fix at the wrong
 thing. The fabrication rate is therefore the primary metric, and the harness and
 analyser both print the split; `headline_mean_misattributes_fabrication` turns
 the ≥1.0 gap into a flag so no future report can quietly hide it.
+
+That split is now empty, and the current run shows why the flag still earns its
+place. Under the placeholder caps the unvetoed mean for `resume-bullet-writer` is
+**6.25** against an overall of **6.13**, and `resume-quantifier` is **6.47**
+against **6.47** — no vetoes, so the two views cover the same tasks and nothing
+is separated. The figure that is still discriminating is the mechanical one:
+**3.3%** of criterion-task pairs span the full `0`–`10` range across seeds, up
+from 0.0% on the previous run, concentrated in `agency` on placeholder
+scaffolding.
 
 `test_vetoed_work_is_reported_separately_from_writing_quality` scores a clean task
 `10.0` and a fabricating task `10.0`, and requires `5.0` overall against `10.0`
@@ -321,6 +346,157 @@ This remains the largest calibration gap and it is **not** closed. What exists
 now is the measurement of it, so the ambiguity is a known number rather than an
 assumption.
 
+## One stated placeholder policy, and what re-measuring it did
+
+The ambiguity above is answered by stating one rule rather than by a third
+round of anchor editing.
+
+### The classification rule
+
+`classify_placeholders` (`evals/layer3_judge.py`) reads each `[...]` span and
+asks one question: **does it occupy a structural slot, or does it name a
+quantity?** It is `scaffolding` when the bracket holds an abstract marker
+(`[X]`, `[N]`, `[M]`, a bare word like `[company]`) or sits in a unit-shaped slot
+immediately after a unit token — `[X]%`, `[N] days`. It is `named` when the
+bracket holds a concrete noun that identifies a specific quantity or entity.
+Classification looks **only** at what is inside the brackets. It never reads
+what follows a placeholder and never reads a token at a distance, because a
+noun's shape alone classified `[time-to-market]` as scaffolding and that
+inference is what misread a real quantity as a blank.
+
+Every generation is classified, the counts are shown to the judge, and
+`worst_case_placeholders` folds the per-seed counts with a **max per field, not
+a sum** — the caps ask whether *any* generation did the thing, so one generation
+with three placeholders is no worse than three generations with one.
+
+### The three caps, and where they are enforced
+
+`apply_placeholder_cap` (`evals/layer3_judge.py`) is a ceiling, never a floor: a
+criterion the judge already scored low is reporting a real deficiency and is
+left alone.
+
+| Criterion | Cap | Why it is differentiated |
+|---|---|---|
+| `truthfulness` | **none** | marking a blank correctly *is* the behaviour this criterion exists to reward |
+| `impact` | 5 when **any** placeholder is present | it asks for a real outcome value, and a placeholder is the absence of one |
+| `agency` | 5 only when a **scaffolding** placeholder is present | a named one does not obscure the actor; a scaffolding one occupies the action slot, which is what agency measures |
+
+Enforced at one place, `evals/layer3_judge.py`, applied to the criterion mean
+and recorded as `mean_capped` alongside the raw `mean`; the arrow `judge->capped`
+in the CLI output marks every criterion where the cap bit. `evals/layer3_variance.py`
+imports the same three functions rather than reimplementing them, so the
+analyser cannot drift from the harness, and it **refuses** to emit an uncapped
+number for a capped report.
+
+### What the caps actually did
+
+**The fabrication rate is the load-bearing number and it held: 0/30 = 0.0%**
+(0 of 10 tasks). The caps did not push the model into avoiding placeholders
+rather than filling them honestly — the transcripts still show the same
+placeholder-plus-request behaviour, and both sourced-number tasks still score
+10.0. Had this gone the other way it would have been the one outcome in this
+plan that must not be committed.
+
+On the like-for-like re-run, the caps **barely bit**. Of 40 criterion entries,
+**exactly one** changed value: `rbw-held-01` `agency`, 6.67 → 5.0. The
+composite was not expected to rise (spec §4.1, D4) and it did not.
+
+| | before caps | after caps |
+|---|---|---|
+| `resume-bullet-writer` | 6.10 | **6.13** |
+| `resume-quantifier` | 6.47 | **6.47** |
+| fabrication (per generation) | 0.0% | **0.0%** |
+
+### Inter-judge, re-measured on the same candidates
+
+| Criterion | before | after | direction |
+|---|---|---|---|
+| `agency` | 2.50 | **2.50** | unchanged |
+| `impact` | 2.50 | **1.50** | fell |
+| `truthfulness` | 1.00 | **1.00** | unchanged |
+| exact agreement | 70% | **76%** | rose |
+| mean absolute difference | 2.00 / 10 | **1.67 / 10** | fell |
+
+Stated plainly: **`agency` did not move.** The disagreement it was supposed to
+fix is still 2.50, still the weakest criterion, and still a single clean
+polarisation — primary reads placeholder scaffolding as unstated agency (0) where
+the second reads it as unmistakable (10), on `rbw-train-01` and `rbw-train-02`.
+`impact` fell 2.50 → 1.50 and is the only criterion the policy moved. Overall
+agreement rose from 70% to 76% and the mean difference fell from 2.00 to 1.67.
+
+**Two caveats that limit what this comparison can carry.** First, the second
+judge is `openai/gpt-oss-120b` at `temperature 0.0`, which is reproducible in
+principle but returned 3 of 30 scores differently across these two runs, so a
+one-point move in a mean over 10 pairs is inside the noise of the instrument.
+Second — and this is the structural limit — **`layer3_interjudge.py` compares
+`t["criteria"][key]["samples"][0]`, the raw uncapped judge score, not
+`mean_capped`.** The inter-judge tool therefore **cannot see the caps at all**.
+What moved between these two runs is the judge's raw scores, not the cap. This
+comparison measures the same candidates re-judged; it does not independently
+confirm the caps improved agreement.
+
+### Fresh candidates — the only independent evidence
+
+Spec §7 forbids presenting a re-measurement on the same candidates as
+validation, so a third run generated at `--judge-temperature 0.4` produced
+candidates neither judge had seen (`layer3-fresh.json`, deliberately not
+overwriting either committed report):
+
+| Criterion | committed run | fresh run | direction |
+|---|---|---|---|
+| `agency` | 2.50 | **2.50** | unchanged |
+| `impact` | 1.50 | **3.00** | **rose — now AMBIGUOUS** |
+| `truthfulness` | 1.00 | **1.00** | unchanged |
+| exact agreement | 76% | **67%** | fell |
+| mean absolute difference | 1.67 / 10 | **2.17 / 10** | rose |
+| fabrication | 0.0% | **0.0%** | held |
+
+**This is the honest result, and it is the one that should govern: on unseen
+candidates the caps did not help.** `impact` rose 1.50 → 3.00 and crossed into
+the `AMBIGUOUS` band the tool flags at ≥3.0, displacing `agency` as the weakest
+criterion. Agreement fell from 76% to 67%. The `impact` improvement on the
+committed candidates **did not generalise** — which is exactly the failure mode
+the fresh-candidate run existed to catch, and it is the round-half-even fit the
+brief warned could not be revealed by re-scoring the old set.
+
+The mechanism is visible in the disagreements: on the fresh run the second judge
+scored placeholder outputs at 5 on `impact` for `rq-train-01`, `rq-train-02` and
+`rq-held-01` where the primary scored 0. The cap only *agrees* with one reading
+of what a placeholder is worth; it does not make the two judges agree about it,
+and on unseen output they still disagree.
+
+### The determinism claim in this document no longer holds as written
+
+This document previously reported that at `temperature 0.0` the judge returned
+identical scores for all three seeds, with a seed swing of `0.0` and 0 of 30
+criterion-task pairs spanning the full range. Re-running the same command
+against the same rubric **contradicted that**: 4 of 40 criteria now vary across
+seeds, `resume-bullet-writer` has a seed swing of **0.66**, and 1 of 30 pairs
+(`rbw-train-01` `agency`, samples `[0, 10, 0]`) spans the full range. The
+consequence is material — the between-skill gap is 0.34 against a swing of 0.66,
+a ratio of **0.5×**, so **the ordering is no longer supported** and no ranking
+is asserted.
+
+The regenerated candidates are also not identical to the committed ones: 24 of 30
+share the same bullet line, 6 differ only in the trailing `NOTE:` text, and 6
+differ in the bullet itself (all `resume-quantifier` refusals, which vary in
+which figures they ask for). Generation at `temperature 0.0` is therefore **not
+byte-stable** in practice on this provider, so "the generator also runs at
+temperature 0.0" is not sufficient to make a re-run a like-for-like
+re-measurement. This is recorded rather than smoothed over: the earlier
+zero-swing figures were real for that run and are not reproducible now.
+
+### The staleness guard does not cover the caps
+
+The guard was built for the failure where a report is scored against *different
+rubric anchors*. These reports were regenerated under a changed **scoring
+function** with unchanged anchors, and `rubric_fingerprint` hashes the rubric
+only — so `layer3_interjudge.py` did not reject the pre-cap reports. Running it
+against the committed report exited **0** and completed a full 30-call run
+rather than the expected exit 2. The staleness is real; the guard simply does
+not detect this class of it. A `scoring_fingerprint` covering the cap functions
+would close the gap. Reported rather than worked around.
+
 ## Four design choices, each avoiding a dishonesty
 
 **Mechanical evidence is computed first and handed to the judge.** Word count,
@@ -413,17 +589,22 @@ any sweep — see [`skillopt-decision.md`](skillopt-decision.md).
 
 ## What this does not establish
 
-- **The composite is judge-dependent.** A second model family agrees on only 50%
-  of judgements, with `agency` diverging by 7.00 points on average. `7.21` is a
-  band, not a precise score.
+- **The composite is judge-dependent.** A second model family agrees on 76% of
+  judgements on the committed candidates and only 67% on fresh ones, with `agency`
+  diverging by 2.50 points in both and `impact` reaching 3.00 on unseen output.
+  `7.21` is a band, not a precise score.
 - **It is not calibrated against human judgement.** No expert rater has scored any
   of these outputs. The anchors are written, not validated, and inter-judge
   agreement is a weaker proxy than a person.
+- **The placeholder caps are not validated either.** They moved exactly one of 40
+  criterion entries on the committed candidates, and on fresh candidates the
+  criterion they targeted got *worse*. One criterion changing in forty is a
+  policy with almost no measured effect, not a validated rule.
 - **Two skills is a pilot, not a gate.** 25 prose-only skills remain unevaluated,
   and the 8 with helper scripts are covered only by Layer 2.
-- **Ten tasks is a small sample.** The ordering survives by 1.47 against a seed
-  swing of 0.0, but that ratio rests on one re-judgement and would move on a
-  different ten tasks.
+- **Ten tasks is a small sample, and the ordering is no longer supported.** The
+  gap is 0.34 against a seed swing of 0.66 — a ratio of 0.5× — so the gap sits
+  inside the noise and no ranking is asserted.
 - **It does not verify the skill document is *followed*.** It measures what
   following the document produces. A skill with excellent prose and a weak
   playbook would score well and still be a problem.
