@@ -148,7 +148,9 @@ Accomplishment: the 40% satisfaction gain. Measurement: 3.2 to 4.5 out of 5. Met
 ✅ AFTER: "Owned the payments platform end to end, covering uptime, cost and release cadence"
 ```
 
-Neither carries a number, and neither needs one. If a figure does exist for a bullet like these, name the quantity it measures, leave a placeholder on that quantity — `[N]`, `[M]` — and fill in what your records show, or send me the figures and I will.
+Neither exemplar carries a number, and neither needs one. These bullets are finished as written.
+
+A figure that genuinely exists is a different case, and it changes the instruction rather than the exemplar. Name the quantity that figure measures, leave a placeholder on that quantity — `[N]`, `[M]` — and fill in what your records show, or send me the figures and I will. Either way the ban is the same: never bracket a slot you never filled.
 
 ### 2. STAR Method
 

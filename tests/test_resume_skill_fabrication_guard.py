@@ -111,6 +111,35 @@ def test_placeholder_language_distinguishes_named_from_structural() -> None:
     )
 
 
+def test_the_metric_free_claim_and_the_placeholder_branch_are_separated() -> None:
+    """Two claims that are each correct read as a contradiction when adjacent.
+
+    "These bullets are finished as written" and "leave a placeholder on that
+    quantity" are both true; the second governs only the case where a figure
+    genuinely exists. Stated as consecutive sentences with no transition between
+    them, the paragraph tells the reader a bullet needs no number and to leave a
+    blank in the same breath. Both branches have to survive, so this pins the
+    transition rather than deleting either claim — and pins its *position*, since
+    a transition that has drifted to the end of the paragraph stops doing its job.
+    """
+    text = doc("resume-bullet-writer")
+    no_figure = "These bullets are finished as written."
+    transition = "it changes the instruction rather than the exemplar"
+    placeholder = "leave a placeholder on that quantity"
+    assert no_figure in text, "the metric-free branch of the category is gone"
+    assert transition in text, (
+        "the conditional was dropped; without it the placeholder instruction "
+        "reads as contradicting the category it sits in"
+    )
+    assert placeholder in text, (
+        "branch 3 must still authorise a placeholder where a figure exists"
+    )
+    assert text.index(no_figure) < text.index(transition) < text.index(placeholder), (
+        "the two claims are adjacent again; the transition has to sit between "
+        "the metric-free claim and the placeholder instruction"
+    )
+
+
 def test_phase_one_guarantees_survive_the_rewrite() -> None:
     """Collateral-damage check. The rewrite must not quietly drop Phase 1.
 
