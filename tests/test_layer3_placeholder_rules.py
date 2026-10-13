@@ -10,6 +10,7 @@ previous round.
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -216,3 +217,54 @@ def test_placeholder_only_output_does_not_crash():
     r = classify("[X]")
     assert r["total"] == 1, r
     assert r["scaffolded"] == 1, r
+
+
+# --- document vs classifier ----------------------------------------------------
+
+class TestTheDocumentAndTheClassifierAgree:
+    """Spec section 5, criterion 4: the previous branch shipped documentation
+    describing a classifier that did not exist. These assert both directions --
+    what the document says, and what the code does -- so they cannot drift."""
+
+    @staticmethod
+    def _doc() -> str:
+        base = Path(__file__).resolve().parent.parent
+        return (base / "skills" / "resume-bullet-writer" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+    def test_no_document_exemplar_scaffolds(self):
+        """Every exemplar the document offers must classify as named or empty.
+
+        This is the one that bites: an example keeping 'by [Z]' teaches the
+        defect the phase exists to remove."""
+        text = self._doc()
+        checked = 0
+        for kind in ("BEFORE", "AFTER"):
+            for example in re.findall(rf'{kind}: "([^"]+)"', text):
+                checked += 1
+                got = classify(example.replace("\n", " "))
+                assert got["scaffolded"] == 0, f"{kind} scaffolds: {example!r} -> {got}"
+        assert checked >= 2, f"no exemplars found; the regex is wrong ({checked})"
+
+    def test_the_named_quantity_exemplar_is_classified_named(self):
+        """The document keeps [N]/[M] on a metric it named. If the classifier
+        ever called those scaffolding, document and code would describe
+        different things.
+
+        The exemplar is selected from the '-> ' worked-example lines, not from
+        the 'AFTER:' blocks. It is not an AFTER exemplar any more: it lives in
+        the decision rule's third branch, where a real-but-unsourced quantity
+        changes the instruction rather than adding a numbered exemplar. The
+        assertion is unchanged; only the selector moved with the document."""
+        text = self._doc()
+        examples = [
+            e.replace("\n", " ")
+            for e in re.findall(r"->\s*(.+?)\s*$", text, re.MULTILINE)
+        ]
+        assert examples, "no '-> ' worked examples found; the regex is wrong"
+        target = next((e for e in examples if "[N]" in e and "[M]" in e), None)
+        assert target is not None, "the [N]/[M] exemplar is missing from the document"
+        got = classify(target)
+        assert got["named"] >= 2, (target, got)
+        assert got["scaffolded"] == 0, (target, got)
