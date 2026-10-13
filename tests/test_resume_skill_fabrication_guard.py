@@ -13,6 +13,16 @@ asserted here rather than left to a future edit.
 
 A missing rule is silent: the document still reads well and the score quietly
 regresses. These tests fail the moment either rule is removed or softened.
+
+A second defect needed the same treatment. The document wrote the XYZ shape
+literally, as `'Accomplished [X] as measured by [Y] by doing [Z]'`, and the model
+copied it slot for slot rather than writing a bullet. Brackets used as notation
+read as output to an imitation-following model, so the file now asserts that the
+document carries no structural slot anywhere — including inside a "do not do this"
+example, which would teach the defect as firmly as the rule ever did. It also
+pins the narrowing that made the removal safe: a blank on a *named quantity*
+stays allowed, because that is what keeps the document from teaching the model
+to omit a clause it could have filled.
 """
 from __future__ import annotations
 
@@ -27,6 +37,40 @@ def doc(skill: str) -> str:
     return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
 
 
+def test_no_literal_template_slots_anywhere_in_the_document() -> None:
+    """A mention anywhere reintroduces the copyable pattern, including inside a
+    'do not do this' example, so the whole file is scanned rather than the rule
+    that changed."""
+    text = doc("resume-bullet-writer")
+    for slot in ("[X]", "[Y]", "[Z]"):
+        assert slot not in text, f"{slot} reintroduces the template the model copies"
+
+
+def test_the_no_metric_example_category_exists_and_is_labelled() -> None:
+    text = doc("resume-bullet-writer")
+    assert "Complete without a metric" in text
+    assert "These are finished bullets" in text
+
+
+def test_placeholder_language_distinguishes_named_from_structural() -> None:
+    text = doc("resume-bullet-writer")
+    assert "A placeholder is a correct answer" not in text, (
+        "the unqualified claim contradicts the no-padding rule"
+    )
+    assert "stands in for a slot" in text
+    assert "[N]" in text and "[M]" in text, (
+        "named-quantity placeholders stay allowed; the document must still show them"
+    )
+
+
+def test_phase_one_guarantees_survive_the_rewrite() -> None:
+    """Collateral-damage check. The rewrite must not quietly drop Phase 1."""
+    text = doc("resume-bullet-writer")
+    assert "## Decision Rule: No Number Available" in text
+    assert "Plausible-sounding ranges" in text
+    assert "Unqualified absolutes" in text
+
+
 class TestResumeBulletWriterCannotBeReverted:
     """The contradiction was "require a metric in every bullet" + "never invent"."""
 
@@ -39,10 +83,6 @@ class TestResumeBulletWriterCannotBeReverted:
 
     def test_a_no_number_decision_rule_exists(self) -> None:
         assert "## Decision Rule: No Number Available" in doc("resume-bullet-writer")
-
-    def test_placeholder_is_documented_as_a_valid_answer(self) -> None:
-        text = doc("resume-bullet-writer")
-        assert "A placeholder is a correct answer" in text
 
     def test_hedged_ranges_are_explicitly_forbidden(self) -> None:
         # "15-20%" was the most common fabrication and reads as careful, not invented.

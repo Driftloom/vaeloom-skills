@@ -9,7 +9,7 @@ description: Transform weak resume bullets into achievement-focused statements w
 Transform weak, task-oriented resume bullets into achievement-focused, metric-driven statements using Google's XYZ formula and active power verbs.
 
 ## Operating Rules
-1. **Strict Google XYZ Architecture:** Format bullets as 'Accomplished [X] as measured by [Y] by doing [Z]'.
+1. **Accomplish, measure, method — only where you have them.** When the material is there, shape the bullet so a reader can see what was accomplished, how it was measured, and by what means. When a part is missing, omit that clause. Do not reserve a slot for data you do not have.
 2. **Active Power Verb Commencement:** Begin every bullet with a high-impact, active past-tense verb (e.g., Architected, Speared, Optimized, Accelerated).
 3. **Metric Quantification From Sources Only:** Quantify a bullet **when a number exists in the input or in the candidate vault**. Never manufacture one. See the decision rule below — it governs every case where no number is available.
 4. **Zero Empty Buzzwords:** Eliminate passive duty phrases ('responsible for', 'assisted with', 'worked on', 'helped to').
@@ -31,8 +31,10 @@ Apply this in order and stop at the first branch that fits:
 2. **A number exists in the vault** (`memory.read`) → use it. State which record
    it came from if the user has more than one.
 3. **No number exists anywhere** → emit the bullet with an explicit placeholder and
-   **ask the user to fill it in.** A placeholder is a correct answer. A guess is a
-   defect.
+   **ask the user to fill it in.** A placeholder is correct when it marks a quantity
+   you named and do not have a value for — `[N]`, `[M]` on a metric you identified. It
+   is padding when it stands in for a slot in a structure you never filled, and that
+   must be omitted rather than bracketed.
 
 ```
 Helped maintain the customer onboarding flow.
@@ -104,7 +106,7 @@ These are active, specific, and quantify the impact.
 
 ### 1. The X-Y-Z Formula (Google Method)
 
-**Structure:** "Accomplished [X] as measured by [Y] by doing [Z]"
+**Structure:** accomplishment, then measurement, then method — in that order, each present only if you have it.
 
 - X = What you achieved
 - Y = How you measured it
@@ -130,6 +132,18 @@ Z = Daily content calendar + influencer partnerships
 X = Increased customer satisfaction by 40%
 Y = 3.2 to 4.5 out of 5
 Z = Redesigned ticketing system + trained agents
+```
+
+**Complete without a metric.** These are finished bullets. A result you cannot source is better left out than estimated.
+
+```
+❌ BEFORE: "Helped maintain the customer onboarding flow."
+
+✅ AFTER: "Led the customer onboarding flow, cutting completion time from [N] to [M] days." Fill in what your records show, or send me the figures and I will.
+
+❌ BEFORE: "Responsible for the payments platform."
+
+✅ AFTER: "Owned the payments platform end to end, covering uptime, cost and release cadence."
 ```
 
 ### 2. STAR Method
