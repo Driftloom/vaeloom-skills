@@ -1,12 +1,12 @@
 ---
 name: resume-bullet-writer
-description: Transform weak resume bullets into achievement-focused statements with metrics and impact
+description: Rewrite weak resume bullets into strong, active achievement statements, quantified wherever the candidate's records hold a real number
 ---
 
 # Resume Bullet Writer & Google XYZ Impact Engine
 
 ## Mission
-Transform weak, task-oriented resume bullets into achievement-focused, metric-driven statements using Google's XYZ formula and active power verbs.
+Transform weak, task-oriented resume bullets into achievement-focused statements using active power verbs, quantified wherever the candidate's own records hold a number and left honestly unquantified where they do not.
 
 ## Operating Rules
 1. **Accomplish, measure, method — only where you have them.** When the material is there, shape the bullet so a reader can see what was accomplished, how it was measured, and by what means. When a part is missing, omit that clause. Do not reserve a slot for data you do not have.
@@ -108,9 +108,13 @@ These are active, specific, and quantify the impact.
 
 **Structure:** accomplishment, then measurement, then method — in that order, each present only if you have it.
 
-- X = What you achieved
-- Y = How you measured it
-- Z = What actions you took
+Three parts, described rather than named. A part that carries a single-letter label is a slot the reader will try to fill, and an unfilled slot is padding.
+
+- The **accomplishment** is what changed — the result, not the activity.
+- The **measurement** is the figure that shows it changed, and it belongs on a quantity you can source from the input or the vault.
+- The **method** is what you did to cause it, named specifically enough to be believed.
+
+Carry all three when the material supports them. When it does not, carry the one you have, whole, and omit the rest.
 
 **Examples:**
 
@@ -119,9 +123,7 @@ These are active, specific, and quantify the impact.
 
 ✅ AFTER: "Grew Instagram following by 250% (5K to 17.5K) by implementing daily content calendar and influencer partnerships"
 
-X = Grew Instagram following by 250%
-Y = 5K to 17.5K followers
-Z = Daily content calendar + influencer partnerships
+Accomplishment: the 250% growth. Measurement: the 5K-to-17.5K move it was measured over. Method: the content calendar and the influencer partnerships.
 ```
 
 ```
@@ -129,22 +131,24 @@ Z = Daily content calendar + influencer partnerships
 
 ✅ AFTER: "Increased customer satisfaction scores by 40% (3.2 to 4.5/5) by redesigning support ticketing system and training 15 agents"
 
-X = Increased customer satisfaction by 40%
-Y = 3.2 to 4.5 out of 5
-Z = Redesigned ticketing system + trained agents
+Accomplishment: the 40% satisfaction gain. Measurement: 3.2 to 4.5 out of 5. Method: the ticketing redesign and the 15 agents trained.
 ```
 
 **Complete without a metric.** These are finished bullets. A result you cannot source is better left out than estimated.
 
 ```
-❌ BEFORE: "Helped maintain the customer onboarding flow."
+❌ BEFORE: "Worked on the internal knowledge base"
 
-✅ AFTER: "Led the customer onboarding flow, cutting completion time from [N] to [M] days." Fill in what your records show, or send me the figures and I will.
-
-❌ BEFORE: "Responsible for the payments platform."
-
-✅ AFTER: "Owned the payments platform end to end, covering uptime, cost and release cadence."
+✅ AFTER: "Rewrote the internal knowledge base from scratch, covering every team's setup, tooling and escalation path"
 ```
+
+```
+❌ BEFORE: "Responsible for the payments platform"
+
+✅ AFTER: "Owned the payments platform end to end, covering uptime, cost and release cadence"
+```
+
+Neither carries a number, and neither needs one. If a figure does exist for a bullet like these, name the quantity it measures, leave a placeholder on that quantity — `[N]`, `[M]` — and fill in what your records show, or send me the figures and I will.
 
 ### 2. STAR Method
 
@@ -209,7 +213,7 @@ For resume bullet (condensed STAR):
 
 ## Quantification Strategies
 
-Every bullet should have at least ONE number. Here's how to find metrics:
+A bullet is stronger for carrying a number, and the number has to be real. Here is what you can quantify once you have found it; the decision rule above governs the case where you have not.
 
 ### Types of Metrics to Include
 
@@ -244,18 +248,10 @@ Every bullet should have at least ONE number. Here's how to find metrics:
 
 ### When You Don't Have Exact Numbers
 
-Use estimation strategies:
-
-**Approximate with ~**
-"Improved performance by ~40%"
-
-**Use ranges**
-"Managed team of 8-12 people"
-"Generated $50K-$75K in monthly revenue"
-
-**Use conservative estimates**
-If you think it was 60%, say 50%
-If you saved 100 hours, say 75 hours
+Do not produce one. An approximation, a range, or a deliberately low guess is a
+fabrication that reads as careful, and the interview finds it anyway. Go to the
+decision rule above and take its third branch: name the quantity you would have
+measured, leave a placeholder on that quantity, and ask the user for the figure.
 
 **Quantify inputs if outputs unknown**
 Can't measure revenue? Quantify activities:
@@ -423,7 +419,7 @@ If too long, prioritize most impressive metrics:
 
 Every bullet should have:
 - ✅ Strong action verb (avoid "responsible for", "helped")
-- ✅ At least one number/metric
+- ✅ A number, wherever the records hold one — omitted rather than estimated where they do not
 - ✅ Specific outcome or result
 - ✅ Context of scale (team size, budget, users, etc.)
 - ✅ 1-2 lines maximum
@@ -498,7 +494,7 @@ Don't draw attention to gaps, just fill space with relevant achievements.
 
 For each resume bullet:
 1. ✅ Identify weak verb → Replace with power verb
-2. ✅ Check for metrics → Add at least one number
+2. ✅ Check the records for a metric → Add the real number, or omit the clause and say why
 3. ✅ Verify it shows result → Add outcome/impact
 4. ✅ Confirm specificity → Remove vague language
 5. ✅ Test length → Keep to 1-2 lines

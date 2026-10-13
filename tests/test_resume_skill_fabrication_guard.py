@@ -12,17 +12,26 @@ number is only meaningful while the rules stay in the documents, so they are
 asserted here rather than left to a future edit.
 
 A missing rule is silent: the document still reads well and the score quietly
-regresses. These tests fail the moment either rule is removed or softened.
+regresses. These tests fail the moment a rule is removed or softened.
 
 A second defect needed the same treatment. The document wrote the XYZ shape
 literally, as `'Accomplished [X] as measured by [Y] by doing [Z]'`, and the model
 copied it slot for slot rather than writing a bullet. Brackets used as notation
 read as output to an imitation-following model, so the file now asserts that the
 document carries no structural slot anywhere — including inside a "do not do this"
-example, which would teach the defect as firmly as the rule ever did. It also
-pins the narrowing that made the removal safe: a blank on a *named quantity*
-stays allowed, because that is what keeps the document from teaching the model
-to omit a clause it could have filled.
+example, which would teach the defect as firmly as the rule ever did. The scan
+also covers the *unbracketed* form: `X = What you achieved` is the same template
+with its brackets removed, and a check for `[X]` alone cannot see it. It pins
+the narrowing that made the removal safe: a blank on a *named quantity* stays
+allowed, because that is what keeps the document from teaching the model to omit
+a clause it could have filled.
+
+The Phase 1 fix was itself only half applied, which is why the assertions below
+are not all presence checks. `Every bullet should have at least ONE number` and a
+menu of estimation strategies survived underneath the Decision Rule that bans
+them; a document can forbid hedged ranges on page one and license them on page
+four, and a presence-only test passes that document happily. Each rule asserted
+here is therefore paired with the absence of the guidance that contradicts it.
 """
 from __future__ import annotations
 
@@ -32,9 +41,44 @@ import pytest
 
 SKILLS = Path(__file__).resolve().parent.parent / "skills"
 
+# Guidance that told the model to produce a number it did not have. Each string
+# here was live in the document at the time these tests were written.
+FORBIDDEN_GUIDANCE = (
+    "Every bullet should have at least ONE number",
+    "Use estimation strategies",
+    "Use ranges",
+    "Use conservative estimates",
+    "If you think it was 60%, say 50%",
+    "At least one number/metric",
+    "Add at least one number",
+)
+
+# The template with its brackets removed. Same defect, invisible to a `[X]` scan.
+SLOT_LABELS = ("X =", "Y =", "Z =")
+
 
 def doc(skill: str) -> str:
     return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+
+
+def assert_no_contradicting_guidance(text: str) -> None:
+    """Assert the document does not ask for a number it cannot have.
+
+    A presence assertion cannot catch a self-contradicting document: every rule
+    can be present and correct while a later section licenses the fabrication the
+    rule forbids. Each phrase below was found live in the document after the
+    Decision Rule had already banned it.
+    """
+    for phrase in FORBIDDEN_GUIDANCE:
+        assert phrase not in text, (
+            f"{phrase!r} tells the model to invent or bracket a number, which is "
+            "the fabrication Phase 1 measured"
+        )
+    for label in SLOT_LABELS:
+        assert label not in text, (
+            f"{label!r} is the three-slot template without its brackets; a named "
+            "slot is one the reader will try to fill"
+        )
 
 
 def test_no_literal_template_slots_anywhere_in_the_document() -> None:
@@ -44,12 +88,16 @@ def test_no_literal_template_slots_anywhere_in_the_document() -> None:
     text = doc("resume-bullet-writer")
     for slot in ("[X]", "[Y]", "[Z]"):
         assert slot not in text, f"{slot} reintroduces the template the model copies"
+    assert_no_contradicting_guidance(text)
 
 
 def test_the_no_metric_example_category_exists_and_is_labelled() -> None:
     text = doc("resume-bullet-writer")
     assert "Complete without a metric" in text
     assert "These are finished bullets" in text
+    # The category claims a metric-free bullet is complete. Guidance demanding a
+    # metric everywhere would contradict it from the inside.
+    assert_no_contradicting_guidance(text)
 
 
 def test_placeholder_language_distinguishes_named_from_structural() -> None:
@@ -64,11 +112,26 @@ def test_placeholder_language_distinguishes_named_from_structural() -> None:
 
 
 def test_phase_one_guarantees_survive_the_rewrite() -> None:
-    """Collateral-damage check. The rewrite must not quietly drop Phase 1."""
+    """Collateral-damage check. The rewrite must not quietly drop Phase 1.
+
+    Asserts the Decision Rule's *shape* — the ordered branches and the thing
+    branch 3 asks the model to do — none of which the per-rule tests below cover.
+    A document can keep every banned phrase quoted in its Forbidden list while
+    deleting the branch that resolves "no number anywhere", and still pass those.
+    """
     text = doc("resume-bullet-writer")
-    assert "## Decision Rule: No Number Available" in text
-    assert "Plausible-sounding ranges" in text
-    assert "Unqualified absolutes" in text
+    assert "Apply this in order and stop at the first branch that fits" in text
+    for branch in (
+        "A number exists in the input",
+        "A number exists in the vault",
+        "No number exists anywhere",
+    ):
+        assert branch in text, f"the Decision Rule lost a branch: {branch!r}"
+    assert "**ask the user to fill it in.**" in text, (
+        "branch 3 must still instruct the model to ask; pinning what a "
+        "placeholder is does not pin the affordance it exists to serve"
+    )
+    assert_no_contradicting_guidance(text)
 
 
 class TestResumeBulletWriterCannotBeReverted:
