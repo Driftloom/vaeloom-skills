@@ -2,11 +2,12 @@
   "synthetic": false,
   "backend": "openai_compatible",
   "rubric_fingerprint": "42b6f2f97eeadba9",
+  "scoring_fingerprint": "fdd35fed800d71a2",
   "judge_temperature": 0.0,
   "fabrication": {
-    "vetoed_tasks": 0,
+    "vetoed_tasks": 1,
     "total_tasks": 10,
-    "rate_pct": 0.0,
+    "rate_pct": 10.0,
     "primary_metric": true
   },
   "results": [
@@ -21,19 +22,177 @@
           "id": "rbw-train-01",
           "split": "train",
           "candidates": {
-            "0": "Optimized the internal analytics dashboard used by the sales team, improving [X] as measured by [Y] by [Z].\n\nNOTE: I have no performance metrics or specific technical actions for this dashboard. Fill in [X] (the outcome), [Y] (the metric), and [Z] (the action), or tell me the details and I'll add them."
+            "0": "Owned the internal analytics dashboard for the sales team, improving [N] by [M] through [Method].\n\nNOTE: I have no metrics or specific methods for this role. Fill in [N] and [M] (e.g., \"reporting speed by 30%\"), and tell me the method used (e.g., \"optimizing SQL queries\"), or I can provide a non-quantified version if you prefer."
           },
           "evidence": {
-            "words": 52,
+            "words": 56,
+            "within_budget": false,
+            "passive_markers": [],
+            "filler_terms": [],
+            "contains_number": true,
+            "fabrication_risk": true,
+            "placeholders": {
+              "total": 5,
+              "named": 5,
+              "scaffolded": 0
+            }
+          },
+          "fabrication_by_seed": {
+            "0": true
+          },
+          "criteria": {
+            "truthfulness": {
+              "weight": 0.4706,
+              "samples": [
+                10
+              ],
+              "mean": 10,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate used placeholders for unknowable quantities rather than inventing figures, adhering strictly to the source text.",
+              "mean_capped": 10
+            },
+            "agency": {
+              "weight": 0.2941,
+              "samples": [
+                5
+              ],
+              "mean": 5,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate used the generic verb 'Owned' and relied on placeholders for the actual achievement, failing to provide a specific, unmistakable outcome.",
+              "mean_capped": 5
+            },
+            "impact": {
+              "weight": 0.2353,
+              "samples": [
+                0
+              ],
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The output uses placeholders instead of specifying an outcome and asks the user to provide the metrics, resulting in no discernible outcome.",
+              "mean_capped": 0
+            },
+            "craft": {
+              "weight": 0.0,
+              "samples": [
+                0
+              ],
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The output contains significant filler in the form of a meta-commentary note and uses placeholders that invite fabrication, violating the requirement for dense, specific information.",
+              "mean_capped": 0
+            }
+          },
+          "score": 0.0,
+          "score_by_seed": [
+            0.0
+          ],
+          "fabrication_vetoed": true,
+          "unstable_criteria": []
+        },
+        {
+          "id": "rbw-train-02",
+          "split": "train",
+          "candidates": {
+            "0": "Led the customer onboarding flow, cutting completion time from [N] to [M] days.\n\nNOTE: I have no completion-time figure for this role. Fill in [N] and [M], or tell me the numbers and I'll add them."
+          },
+          "evidence": {
+            "words": 36,
+            "within_budget": true,
+            "passive_markers": [],
+            "filler_terms": [],
+            "contains_number": false,
+            "fabrication_risk": false,
+            "placeholders": {
+              "total": 4,
+              "named": 4,
+              "scaffolded": 0
+            }
+          },
+          "fabrication_by_seed": {
+            "0": false
+          },
+          "criteria": {
+            "truthfulness": {
+              "weight": 0.4706,
+              "samples": [
+                0
+              ],
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate asserts the user 'led' the flow and 'cut completion time', both of which are specific outcomes not provided in the source text.",
+              "mean_capped": 0
+            },
+            "agency": {
+              "weight": 0.2941,
+              "samples": [
+                5
+              ],
+              "mean": 5,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate replaced 'helped maintain' with 'led', but the use of placeholders for the outcome makes the actual achievement generic and obscured.",
+              "mean_capped": 5
+            },
+            "impact": {
+              "weight": 0.2353,
+              "samples": [
+                0
+              ],
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate output describes a task and uses placeholders for outcomes rather than providing a discernible, truthful result.",
+              "mean_capped": 0
+            },
+            "craft": {
+              "weight": 0.0,
+              "samples": [
+                0
+              ],
+              "mean": 0,
+              "stdev": 0.0,
+              "spread": 0,
+              "unstable": false,
+              "rationale": "The candidate fabricated specific outcomes (cutting completion time) not present in the source text and included filler-opening phrasing in the note.",
+              "mean_capped": 0
+            }
+          },
+          "score": 1.47,
+          "score_by_seed": [
+            1.47
+          ],
+          "fabrication_vetoed": false,
+          "unstable_criteria": []
+        },
+        {
+          "id": "rbw-held-01",
+          "split": "held_out",
+          "candidates": {
+            "0": "Optimized marketing site page load time from [N] to [M] seconds by [Method]\n\nNOTE: I have no load-time figures or specific technical methods for this task. Fill in [N] and [M], or tell me the numbers and the method used and I'll add them."
+          },
+          "evidence": {
+            "words": 44,
             "within_budget": false,
             "passive_markers": [],
             "filler_terms": [],
             "contains_number": false,
             "fabrication_risk": false,
             "placeholders": {
-              "total": 6,
-              "named": 0,
-              "scaffolded": 6
+              "total": 5,
+              "named": 5,
+              "scaffolded": 0
             }
           },
           "fabrication_by_seed": {
@@ -49,20 +208,20 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate avoided inventing figures by using placeholders for unknowable quantities, ensuring every claim traces to the source.",
+              "rationale": "The candidate used placeholders for unknowable quantities rather than inventing figures, adhering perfectly to the source text.",
               "mean_capped": 10
             },
             "agency": {
               "weight": 0.2941,
               "samples": [
-                10
+                0
               ],
-              "mean": 10,
+              "mean": 0,
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate uses a strong action verb ('Optimized') and a clear object, transforming a duty into an achievement with unmistakable agency.",
-              "mean_capped": 5.0
+              "rationale": "The output consists of placeholders rather than a completed achievement, functioning as a request for information.",
+              "mean_capped": 0
             },
             "impact": {
               "weight": 0.2353,
@@ -85,165 +244,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output contains extensive filler-opening phrasing and scaffolding placeholders that exceed the word budget and add no information.",
-              "mean_capped": 0
-            }
-          },
-          "score": 6.18,
-          "score_by_seed": [
-            6.18
-          ],
-          "fabrication_vetoed": false,
-          "unstable_criteria": []
-        },
-        {
-          "id": "rbw-train-02",
-          "split": "train",
-          "candidates": {
-            "0": "Optimized the customer onboarding flow, reducing completion time from [N] to [M] days by [Z].\n\nNOTE: I have no completion-time or specific action figures for this role. Fill in [N], [M], and [Z], or tell me the numbers and I'll add them."
-          },
-          "evidence": {
-            "words": 42,
-            "within_budget": false,
-            "passive_markers": [],
-            "filler_terms": [],
-            "contains_number": false,
-            "fabrication_risk": false,
-            "placeholders": {
-              "total": 6,
-              "named": 4,
-              "scaffolded": 2
-            }
-          },
-          "fabrication_by_seed": {
-            "0": false
-          },
-          "criteria": {
-            "truthfulness": {
-              "weight": 0.4706,
-              "samples": [
-                10
-              ],
-              "mean": 10,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The candidate avoided fabricating figures by using placeholders for unknowable quantities, ensuring every claim traces back to the source.",
-              "mean_capped": 10
-            },
-            "agency": {
-              "weight": 0.2941,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The candidate fabricated an achievement ('Optimized') and metrics not present in the source text, which only stated they 'helped maintain'.",
-              "mean_capped": 0
-            },
-            "impact": {
-              "weight": 0.2353,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The output uses placeholders instead of actual outcomes, effectively describing a task without a discernible result.",
-              "mean_capped": 0
-            },
-            "craft": {
-              "weight": 0.0,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The output contains significant filler-opening phrasing and placeholders, and it fabricates specific outcomes not present in the source text.",
-              "mean_capped": 0
-            }
-          },
-          "score": 4.71,
-          "score_by_seed": [
-            4.71
-          ],
-          "fabrication_vetoed": false,
-          "unstable_criteria": []
-        },
-        {
-          "id": "rbw-held-01",
-          "split": "held_out",
-          "candidates": {
-            "0": "Optimized marketing site page load time, reducing it from [N] to [M] seconds by [Z]\n\nNOTE: I have no load-time figures or specific technical actions for this task. Fill in [N] and [M] for the time reduction, and [Z] for the specific method used (e.g., implementing lazy loading, compressing assets, or optimizing CDN configurations)."
-          },
-          "evidence": {
-            "words": 54,
-            "within_budget": false,
-            "passive_markers": [],
-            "filler_terms": [],
-            "contains_number": false,
-            "fabrication_risk": false,
-            "placeholders": {
-              "total": 6,
-              "named": 4,
-              "scaffolded": 2
-            }
-          },
-          "fabrication_by_seed": {
-            "0": false
-          },
-          "criteria": {
-            "truthfulness": {
-              "weight": 0.4706,
-              "samples": [
-                10
-              ],
-              "mean": 10,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The candidate correctly identified that the source provided no figures and used placeholders for the candidate to fill in rather than inventing data.",
-              "mean_capped": 10
-            },
-            "agency": {
-              "weight": 0.2941,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The output consists of placeholders and instructions rather than a completed achievement, effectively functioning as a request for information.",
-              "mean_capped": 0
-            },
-            "impact": {
-              "weight": 0.2353,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The output uses placeholders instead of providing a discernible outcome, effectively describing only the task.",
-              "mean_capped": 0
-            },
-            "craft": {
-              "weight": 0.0,
-              "samples": [
-                0
-              ],
-              "mean": 0,
-              "stdev": 0.0,
-              "spread": 0,
-              "unstable": false,
-              "rationale": "The output includes extensive filler-opening phrasing and instructional scaffolding that exceeds the word budget and adds no information.",
+              "rationale": "The output contains significant filler-opening phrasing and meta-commentary that exceeds the word budget and adds no information.",
               "mean_capped": 0
             }
           },
@@ -258,7 +259,7 @@
           "id": "rbw-held-02",
           "split": "held_out",
           "candidates": {
-            "0": "Automated the weekly reporting process by building an internal tool, reducing manual effort by [N] hours per week.\n\nNOTE: I have no time-saving figure for this tool. Fill in [N], or tell me the number and I'll add it."
+            "0": "Automated the weekly reporting process by building an internal tool, reducing manual effort by [N] hours per week.\n\nNOTE: I have no figure for the time saved. Fill in [N], or tell me the number and I'll add it."
           },
           "evidence": {
             "words": 39,
@@ -286,7 +287,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate correctly used a placeholder for the unknown time-saving figure rather than inventing one.",
+              "rationale": "The candidate accurately reflects the source and uses a placeholder for the unknowable quantity as required by the rubric.",
               "mean_capped": 10
             },
             "agency": {
@@ -310,7 +311,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output uses a placeholder [N] instead of a specific quantity, resulting in no discernible outcome.",
+              "rationale": "The output describes a task and uses a placeholder for the outcome, resulting in no discernible change or quantity.",
               "mean_capped": 0
             },
             "craft": {
@@ -322,7 +323,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output includes placeholders and conversational filler that are not part of the source text.",
+              "rationale": "The output includes placeholders and meta-commentary, which constitutes filler and padding not present in the source text.",
               "mean_capped": 0
             }
           },
@@ -334,14 +335,14 @@
           "unstable_criteria": []
         }
       ],
-      "mean_score": 5.81,
-      "min_score": 4.71,
+      "mean_score": 3.46,
+      "min_score": 0.0,
       "max_score": 7.65,
-      "stdev": 1.22,
-      "any_fabrication": false,
+      "stdev": 2.96,
+      "any_fabrication": true,
       "unstable": false,
-      "unvetoed_mean_score": 5.81,
-      "unvetoed_tasks": 4
+      "unvetoed_mean_score": 4.61,
+      "unvetoed_tasks": 3
     },
     {
       "skill": "resume-quantifier",
@@ -354,10 +355,10 @@
           "id": "rq-train-01",
           "split": "train",
           "candidates": {
-            "0": "I don't have figures for this one\u2014send me the team size, the volume of transactions processed, or the budget managed and I'll quantify it."
+            "0": "I don't have figures for this one\u2014send me the team size, the volume of payments processed (daily/monthly), or the platform's uptime/reliability percentage and I'll quantify it."
           },
           "evidence": {
-            "words": 24,
+            "words": 26,
             "within_budget": true,
             "passive_markers": [],
             "filler_terms": [],
@@ -406,7 +407,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output describes a task (requesting data) rather than stating an outcome or a change.",
+              "rationale": "The output describes a task (requesting data) rather than stating an outcome or change.",
               "mean_capped": 0
             },
             "craft": {
@@ -418,7 +419,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output is entirely filler and meta-commentary, failing to provide any dense or specific information from the source text.",
+              "rationale": "The output is entirely filler-opening phrasing and meta-commentary rather than a dense, specific delivery of the source text.",
               "mean_capped": 0
             }
           },
@@ -461,7 +462,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate correctly avoided fabricating figures and explicitly marked unknowable quantities for the user to fill in.",
+              "rationale": "The candidate avoided fabricating figures and explicitly marked unknowable quantities for the user to fill in.",
               "mean_capped": 10
             },
             "agency": {
@@ -485,7 +486,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output describes a task of gathering data rather than stating a discernible outcome or change.",
+              "rationale": "The output describes a task of gathering data rather than stating an outcome or a specific quantity.",
               "mean_capped": 0
             },
             "craft": {
@@ -512,10 +513,10 @@
           "id": "rq-held-01",
           "split": "held_out",
           "candidates": {
-            "0": "I don't have figures for this one \u2014 send me the volume of data migrated (e.g., TB/PB), the number of tables or records, the time saved during the transition, or the number of users impacted and I'll quantify it."
+            "0": "I don't have figures for this one\u2014send me the volume of data migrated (e.g., TB/PB), the number of tables or datasets, the time saved during the transition, or the reduction in query latency, and I'll quantify it."
           },
           "evidence": {
-            "words": 39,
+            "words": 37,
             "within_budget": true,
             "passive_markers": [],
             "filler_terms": [],
@@ -540,7 +541,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate avoided inventing figures and explicitly marked unknowable quantities for the user to fill in, adhering perfectly to the source.",
+              "rationale": "The candidate avoided inventing figures and explicitly asked for the unknowable quantities to be provided.",
               "mean_capped": 10
             },
             "agency": {
@@ -576,7 +577,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output is entirely filler-opening phrasing and meta-commentary, failing to provide any dense or specific information regarding the source text.",
+              "rationale": "The output consists entirely of filler-opening phrasing and meta-commentary, failing to provide the actual content of the source text.",
               "mean_capped": 0
             }
           },
@@ -619,7 +620,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate correctly identified that figures were unknowable and requested them rather than inventing data.",
+              "rationale": "The candidate correctly identified that quantities were unknowable and requested them rather than inventing figures.",
               "mean_capped": 10
             },
             "agency": {
@@ -643,7 +644,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output describes a task (requesting data) rather than stating an outcome.",
+              "rationale": "The candidate output describes a task (requesting data) rather than stating an outcome.",
               "mean_capped": 0
             },
             "craft": {
@@ -655,7 +656,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output is entirely filler-opening phrasing and a request for information rather than a dense, specific claim.",
+              "rationale": "The candidate output is a meta-commentary request rather than a dense, specific claim based on the source text.",
               "mean_capped": 0
             }
           },
@@ -698,7 +699,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate accurately carried over both source figures verbatim and provided a mathematically correct derivation without inventing new facts.",
+              "rationale": "The candidate accurately carried over both sourced figures verbatim and provided a mathematically correct derivation without inventing new facts.",
               "mean_capped": 10
             },
             "agency": {
@@ -710,7 +711,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The candidate uses a strong, specific action verb ('Reduced') and a clear object, making ownership unmistakable.",
+              "rationale": "The candidate uses a strong action verb ('Reduced') and a specific object, making ownership unmistakable in accordance with resume convention.",
               "mean_capped": 10
             },
             "impact": {
@@ -722,7 +723,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output explicitly states the starting and ending quantities, making it clear exactly what changed.",
+              "rationale": "The output explicitly states the change in quantity from 480ms to 120ms, making the outcome clear and precise.",
               "mean_capped": 10
             },
             "craft": {
@@ -734,7 +735,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output is readable but contains a redundant calculation that can be trimmed without loss of information.",
+              "rationale": "The output is readable but contains a redundant parenthetical calculation that can be trimmed without loss of information.",
               "mean_capped": 5
             }
           },
@@ -777,7 +778,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "Every claim traces to the source, and the derived percentage is acceptable because the arithmetic is explicitly visible.",
+              "rationale": "Every claim traces to the source, and the derived percentage is accompanied by the visible arithmetic as required.",
               "mean_capped": 10
             },
             "agency": {
@@ -801,7 +802,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The output specifies exactly what changed (query latency reduced from 4s to 1s) and provides the arithmetic for the derived percentage.",
+              "rationale": "The output specifies exactly what changed (query latency from 4s to 1s) and provides the arithmetic for the derived percentage.",
               "mean_capped": 10
             },
             "craft": {
@@ -813,7 +814,7 @@
               "stdev": 0.0,
               "spread": 0,
               "unstable": false,
-              "rationale": "The text is dense and specific, with no filler, and correctly includes the arithmetic for the derived percentage.",
+              "rationale": "The text is dense and specific, with every clause providing information and no filler words.",
               "mean_capped": 10
             }
           },
