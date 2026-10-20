@@ -50,15 +50,24 @@ def interjudge_figures() -> list[tuple[str, str]]:
     return out
 
 
-def _variants(value: float) -> tuple[str, ...]:
+def _variants(value: float) -> tuple[str, str]:
     """Both renderings of a float that does not land exactly on two places.
 
     The analyser prints Python's round-half-even while the report stores
     round-half-up, so 6.105 can appear as either 6.10 or 6.11. The prose may use
     either; forcing one would put a number in the doc that neither tool emits.
+
+    Always exactly two, never one. Adding 0.01 does not always change the
+    rendered string: 3.555 formats as "3.56", and 3.555 + 0.01 is 3.564999... in
+    binary floating point, which also formats as "3.56". Returning a single
+    element in that case made this function's arity depend on the data, so every
+    call site unpacking two values raised ValueError on whichever report happened
+    to contain such a mean -- the checker crashed rather than reporting, which is
+    the one failure this script exists to prevent. A repeated render is harmless:
+    accepting either rendering when they coincide is the same test as accepting one.
     """
     lo, hi = f"{value:.2f}", f"{value + 0.01:.2f}"
-    return (lo,) if lo == hi else (lo, hi)
+    return lo, hi
 
 
 def main() -> int:
