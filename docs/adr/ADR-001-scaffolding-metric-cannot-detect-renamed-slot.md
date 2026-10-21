@@ -1,3 +1,35 @@
+## Amendment (2026-10-20)
+
+An adversarial audit of this ADR found two defects in it, both corrected below.
+They are recorded here rather than silently rewritten.
+
+**1. The mechanism was stated as a symptom, not as the design it is.** The
+original said `[Method]` scores `named` because `"method" is not one of the three
+literals`. That is true and incomplete. `classify_placeholders`
+(`evals/layer3_judge.py:99`) is a deliberate conservative design: three positive
+triggers (formula variable, `as measured by`, instruction verb or `your`) with
+**named as the default when none fires** — per spec section 3.1, with a source
+comment asserting the list is complete. The escape class is not "any token
+outside X/Y/Z"; it is **noun-headed structural slots**. Probes:
+
+- `[Method]` → `named` — wrong, it is a slot
+- `[Action]` → `named` — wrong, same class as `[Method]`
+- `[pct]` → `named` — **correct**, it is a quantity
+
+`[pct]` staying named is right, so the `named` bucket is not undiscriminated; it
+is the default, and the triggers simply produce no evidence for noun-headed
+slots. The completeness comment made this blind spot a documented feature.
+
+**2. The Decision rule contradicted its own Options section.** Rule 1 proposed
+an allowlist (`Method`, `Action`, `Approach`, `Verb`) — the exact pattern the
+Options section rejects as fixing today's symptom. Rule 1 is rewritten below as
+a requirement, not a mechanism. One further fact the original missed: `[N]` and
+`[M]` are themselves bare single capital letters, so **shape alone cannot
+separate a named quantity from a formula variable** — the distinction is
+conventional, and any shape rule must say what it does with that.
+
+---
+
 # ADR-001: The scaffolding metric cannot detect a renamed structural slot
 
 - **Status:** Accepted
@@ -31,18 +63,22 @@ The structural slot did not disappear. It was renamed.
 
 | task | Phase 1 | Phase 2 | classifier verdict |
 |---|---|---|---|
-| `rbw-train-01` | `[Z]` | `[Method]` | `named` — not counted |
-| `rbw-train-01` | — | `[N] [M] [Method]` | `named` — not counted |
+| `rbw-train-01` | `[X] [Y] [Z]` | `[Method]` | `named` — not counted |
 | `rbw-train-02` | `[Z]` | `[N] [M]` | `named` — not counted |
 | `rbw-held-01` | `[Z]` | `[N] [M] [Method]` | `named` — not counted |
-| `rbw-held-01` | — | `[N] [M] [Method]` | `named` — not counted |
-| `rbw-held-02` | — | `[N] [N]` | `named` — not counted |
+| `rbw-held-02` | — | `[N]` | `named` — correct |
 
 `rbw-train-01` and `rbw-held-01` are the same two tasks that carried `[Z]` in
-Phase 1. `[Method]` is the third structural slot under a different name. The
-classifier scores it `named` because "method" is not one of the three literals
-it recognises, no `as measured by` precedes it, and "method" is not an
-instruction verb.
+Phase 1. `[Method]` is the third structural slot under a different name.
+
+The mechanism, read from source rather than inferred from one probe: the
+classifier fires `scaffolded` on three positive triggers only — the token is
+`[X]`/`[Y]`/`[Z]`, the phrase `as measured by` immediately precedes it, or its
+first word is an instruction verb or `your`. **`named` is the default when none
+fires.** `[Method]` gets no positive evidence (it is not a formula variable, no
+`as measured by` precedes it, `method` is not an instruction verb), so it falls
+to the default. `[Action]` falls identically. This is per spec section 3.1,
+whose source comment calls the trigger list *complete*.
 
 Criterion 2 was therefore unproven, not met.
 
@@ -53,9 +89,13 @@ worthless. That thesis was correct, and it was violated by the metric it
 produced. Concretely:
 
 - **A `scaffolded == 0` result from this harness carries no information about
-  whether the skill document is fixed.** The three tokens that define the
-  metric were never a general rule for "structural slot"; they were a literal
-  read of the Phase 1 template.
+  whether the skill document is fixed.** The triggers that define the metric
+  produce no evidence for noun-headed structural slots, and `named` is the
+  default — so an unfilled slot under any noun head counts as a filled one.
+- **The escape class is general, not specific to this rename.** `[Method]` and
+  `[Action]` escape today; the next document could use `[Role]`, `[Tool]`,
+  `[Approach]` tomorrow. Any metric with a default-on-no-evidence rule passes
+  whatever the subject renames, as long as the rename avoids the trigger words.
 - **This bounds what Phase 1's merge (`5c5cf92`) can claim.** The other Phase 1
   findings — the fabrication detector, the caps, the staleness guard — are
   unaffected. The scaffolding figure specifically is now known to be
@@ -68,11 +108,15 @@ produced. Concretely:
 
 **Fix the classifier before trusting any further scaffolding figure.**
 
-1. `classify_placeholders` must key on shape, not on three literal names. A
-   token is a structural slot if it is a bare single capital letter, or if it
-   names an instruction the skill asks the model to perform (`Method`,
-   `Action`, `Approach`, `Verb`) rather than a quantity. Named quantities
-   (`N`, `M`, `pct`, units) stay `named`.
+1. `classify_placeholders` must catch noun-headed structural slots. The current
+   rule produces no positive evidence for them, so they fall to the `named`
+   default. The mechanism is deliberately unspecified here; the requirement is
+   that the next rename cannot escape silently. Any rule must hold all of:
+   `[N]`, `[M]` stay `named` (they are bare single capitals too, so shape alone
+   cannot separate them from `[X]`); `[pct]`, `[time-to-market]` and other
+   quantity references stay `named`; and the char-shape inference that
+   misclassified `[time-to-market]` as scaffolding (the reason the default
+   exists) must not return.
 2. The `rbw-*` guard test must assert **absence of slot-shaped tokens**, not
    `scaffolded == 0`. A test that passes only when the metric is working is
    not a test of the skill.

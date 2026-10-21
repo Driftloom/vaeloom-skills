@@ -261,47 +261,40 @@ class TestCommittedReportsAreCurrent:
             "any comparison that uses it"
         )
 
+    # `test_the_committed_reports_predate_the_scoring_fingerprint` was deleted
+    # on its own contract: both reports now carry `scoring_fingerprint` (produced
+    # by the Phase 2 regeneration in commit d64c4f4), and that test's docstring
+    # prescribed deletion -- not loosening -- once the field was present.
+    # `test_committed_report_matches_the_current_rubric` above still pins that
+    # every committed report was scored by the rubric now in
+    # `evals/layer3_tasks.json`.
+
     @pytest.mark.parametrize("name", ["layer3-live-report.json", "layer3-live-s3.json"])
-    def test_the_committed_reports_predate_the_scoring_fingerprint(
+    def test_committed_report_records_which_scoring_policy_produced_it(
         self, name: str, spec
     ) -> None:
-        """A known-stale state, asserted rather than left to be discovered.
+        """The replacement for the deleted staleness pin.
 
-        Both committed reports were produced before `scoring_fingerprint`
-        existed, so neither can show which scoring policy produced its numbers
-        -- only which rubric did. `layer3_interjudge.py` therefore refuses them,
-        and this test pins that refusal on the real artifacts rather than only
-        on synthetic fixtures.
-
-        The fix is regeneration against the live backend:
-
-            python evals/layer3_judge.py --backend openai_compatible \\
-                --split all --seeds 3 --json <report>
-
-        which this environment cannot do: it needs credentials and spends a few
-        hundred calls. When it is done the report will carry the field, this
-        assertion will fail, and the honest response is to delete it -- not to
-        loosen it into something that passes either way.
-
-        `layer3_variance.py` is unaffected and keeps analysing these reports.
-        It reads the harness's own recorded `score_by_seed` rather than
-        recomputing a score through its own model of the caps, so a changed
-        policy cannot make it report a number the harness did not produce. The
-        inter-judge tool is where the staleness was undetectable, because that
-        tool compares two runs rather than reading one.
+        A report may now be current on the rubric and still be unattributable on
+        the scoring function, which is how the pre-cap reports slipped through
+        `layer3_interjudge.py`. This asserts the field the deleted test waited
+        for is present and matches the policy the source computes.
         """
         report = json.loads((ROOT / name).read_text(encoding="utf-8"))
-        assert "scoring_fingerprint" not in report, (
-            f"{name} now records a scoring_fingerprint. If it was regenerated "
-            "under the current policy, this test is obsolete -- delete it. If "
-            "it was hand-stamped instead, the report is now claiming a "
-            "provenance it does not have."
+        assert report.get("scoring_fingerprint"), (
+            f"{name} predates the scoring fingerprint; regenerate it"
         )
         sys.path.insert(0, str(ROOT / "evals"))
+        from layer3_judge import scoring_fingerprint
+
+        assert report["scoring_fingerprint"] == scoring_fingerprint(), (
+            f"{name} was scored under a different scoring policy than the one "
+            "now in evals/layer3_judge.py; re-run layer3_judge.py before "
+            "trusting any comparison that uses it"
+        )
+
         from layer3_interjudge import provenance_problem
 
-        problem = provenance_problem(report, spec["rubric"], name)
-        assert problem is not None, (
-            "a report with no scoring_fingerprint must be refused"
+        assert provenance_problem(report, spec["rubric"], name) is None, (
+            f"{name} must be admissible to the inter-judge comparison"
         )
-        assert "no scoring_fingerprint" in problem

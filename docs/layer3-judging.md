@@ -6,17 +6,24 @@ resume bullet.** This layer can, and is the prerequisite for SkillOpt, which
 optimises against exactly this kind of signal.
 
 > **Status: measured live against `gemma4:31b` via `ollama.com/v1`.**
-> Overall **6.30/10** at 3 seeds across 2 skills. **0.0% of generations
-> fabricate** (0 of 30).
+> Overall **5.01/10** at 3 seeds across 2 skills — **5.61/10 with the 2
+> fabricating generations excluded**, because the plain mean misattributes
+> their damage to prose quality. **6.7% of generations fabricate** (2 of 30).
 > The anchors are written, not calibrated against human raters, so this is a
 > first reading rather than a baseline. See the two sections below for what the
 > number does and does not support.
 >
+> **These figures are from the Phase 2 branch run ("The Phase 2 run and what it
+> actually proved", below).** They describe the `resume-bullet-writer` document
+> *after* its template-removal edit, and that edit is not validated: the
+> scaffolding metric is blind to noun-headed slots (ADR-001), and fabrication
+> rose from 0 of 30 to 2 of 30. The branch stopped at its own gate. Nothing in
+> this header is a claim that the document change succeeded.
+>
 > **Regenerated under the placeholder caps (see "One stated placeholder
-> policy").** Fabrication is **0.0%** (0 of 30). A second model family agrees on
-> **76%** of judgements. On fresh candidates neither judge had seen, agreement
-> was **67%** and `impact` divergence rose to **3.00** — the caps did not
-> generalise.
+> policy").** A second model family agrees on **76%** of judgements. On fresh
+> candidates neither judge had seen, agreement was **67%** and `impact`
+> divergence rose to **3.00** — the caps did not generalise.
 >
 > An earlier revision of this header read **4.78/10** and **33% of generations
 > fabricate**, directly above a line stating fabrication was **0.0%**. Neither
@@ -131,15 +138,21 @@ The task set grew from 8 to 10 once the fix landed — see the section on the so
 tasks below, which exist because a 0% fabrication rate is also what a broken skill
 would report.
 
-- **Ordering is not supported.** The gap is 0.34 against a seed-to-seed swing of
-  0.66 — a ratio of 0.5×, so the gap is inside the noise. No ranking is asserted.
-- **The judge is not self-consistent on this run.** 1 of 30 criterion-task pairs
-  returned the full `0`–`10` range (`rbw-train-01` `agency`, samples
-  `[5.81, 6.47, 6.11]` at the skill level and `[0, 10, 0]` on the criterion),
-  against 0 of 30 on the previous run and 2 of 24 before the skill documents
-  changed. Note this is *self*-consistency; the cross-model comparison below is
-  the harder test.
-- **Fabrication is 0.0% per generation** (0 of 30), down from 25.0% (6 of 24).
+- **On the Phase 1 re-run, ordering was not supported.** The gap was 0.34 against
+  a seed-to-seed swing of 0.66 — a ratio of 0.5×, so the gap was inside the
+  noise. On the Phase 2 run the gap is **2.92** against a swing of **0.29** (ratio
+  **10.0×**), so ordering is supported there — but that run sits after the
+  `resume-bullet-writer` document edit, so the gap partly measures the edit, not
+  the skills. See "The Phase 2 run and what it actually proved".
+- **The judge was not self-consistent on the Phase 1 re-run.** 1 of 30
+  criterion-task pairs returned the full `0`–`10` range (`rbw-train-01` `agency`,
+  samples `[5.81, 6.47, 6.11]` at the skill level and `[0, 10, 0]` on the
+  criterion), against 0 of 30 on the previous run and 2 of 24 before the skill
+  documents changed. On the Phase 2 run the full-range rate is **0.0%**. Note
+  this is *self*-consistency; the cross-model comparison below is the harder test.
+- **Fabrication was 0.0% per generation on the Phase 1 re-run** (0 of 30), down
+  from 25.0% (6 of 24). On the Phase 2 run it is **6.7%** (2 of 30) — the
+  document edit moved fabrication, see the Phase 2 section.
 
 ### `--seeds` at temperature 0.0 is a reproducibility check, not a variance sample
 
@@ -275,6 +288,58 @@ The two decision rules are pinned by
 `tests/test_resume_skill_fabrication_guard.py` (14 tests). A removed rule is
 silent: the document still reads well and the score quietly regresses, so
 restoring the old operating rule fails the suite.
+
+## The Phase 2 run and what it actually proved
+
+Phase 2 removed the literal `'Accomplished [X] as measured by [Y] by doing [Z]'`
+template from `resume-bullet-writer` — candidates had been copying it verbatim —
+and rewrote the placeholder guidance. Both criteria were then measured by
+regenerating both reports (~200 live calls). **One criterion is unproven, one
+regressed, and the work stopped at its own stop gate.**
+
+| | Phase 1 (pre-edit) | Phase 2 (post-edit) |
+|---|---|---|
+| 1-seed mean, `resume-bullet-writer` | 5.81 | **3.46** |
+| 3-seed mean, `resume-bullet-writer` | 6.13 | **3.56** |
+| per-seed means, `resume-bullet-writer` | `[5.81, 6.47, 6.11]` | **`[3.46, 3.46, 3.75]`** |
+| unvetoed mean, `resume-bullet-writer` | 6.25 | **4.74** |
+| between-skill gap / swing / ratio | 0.34 / 0.66 / 0.5× | **2.92 / 0.29 / 10.0×** |
+| fabrication per generation | 0 of 30 (0.0%) | **2 of 30 (6.7%)** |
+| fabrication, task level | 0 of 10 | **10.0%** |
+
+Reading the table honestly:
+
+- **Criterion 2 (scaffolding eliminated) is unproven, not met.** The classifier
+  reports `scaffolded == 0` across every `rbw-*` candidate, but ADR-001 shows the
+  metric cannot see a noun-headed slot: `[Method]` — the third structural slot
+  renamed — appears in `rbw-train-01` and `rbw-held-01`, the exact two tasks that
+  carried `[Z]` in Phase 1. The zero is an artefact of a blind measurement, so
+  this column records it rather than claims it: the template-copying defect is
+  *unverified*, and `scaffolded == 0` from this harness carries no information
+  until the classifier is fixed.
+- **Criterion 3 (fabrication stays 0.0%) regressed.** The fabricating generations
+  volunteer example figures inside the parenthetical they use to ask the user for
+  numbers — *"Fill in [N] and [M] (e.g., \"data accuracy by 20%\")"*. Removing the
+  template moved fabrication out of the bullet and into the ask. Earlier this
+  ledger attributed the rise to a document instruction to supply examples; the
+  document contains no such instruction, and that claim is retracted — the
+  cause is imitation of the exemplars' density, not a rule the document states.
+- **The overall judged quality fell hard.** The 3-seed mean dropped 6.13 → 3.56
+  and the unvetoed mean 6.25 → 4.74. One task was vetoed and pinned to 0.0
+  (task-level rate 10.0%), which drags the headline, but the unvetoed figure
+  falls on its own. Whatever the document edit did, by the rubric's own measure
+  it made the skill worse, not better.
+- **The ordering flipped to "supported" for a reason that is not skill quality.**
+  The gap is now 2.92 against a swing of 0.29 (ratio 10.0×), so this run says
+  `resume-quantifier` outranks `resume-bullet-writer` — but the two documents are
+  no longer on the same footing: the `rbw` doc was edited between the baseline
+  and this run, so the gap partly measures the edit. No ranking is asserted from
+  it.
+
+The evidence lives in `layer3-live-s3.json` and `layer3-live-report.json`
+(committed in `d64c4f4`). Per ADR-001, no `scaffolded` figure from this harness
+may be cited as evidence that a document change succeeded until the classifier
+catches noun-headed slots.
 
 ## How much of this survives a different judge?
 
