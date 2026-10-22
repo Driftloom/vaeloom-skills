@@ -156,3 +156,74 @@ documents but only one is scanned.
 Scoped to Phase 1, not to Phase 2. Requires its own branch and its own review.
 The gate on starting it: this ADR merged, so that no later reader revives
 `[Method]` as an acceptable named quantity.
+
+## Adopted mechanism (2026-10-21)
+
+The follow-up was executed on this branch rather than a new one, by explicit
+user direction ("extend and push and merge"), which waives the separate-branch
+step above; it was not waived lightly, and this note is what remains of the
+review that would otherwise have happened there.
+
+Trigger 4 was added to `classify_placeholders`
+(`evals/layer3_judge.py`): the contents are a schema label when they match
+`^[A-Z][a-z]+$` -- one capitalized word of two or more letters. The narrowed
+shape is the whole point of this ADR:
+
+- single letters (`[N]`, `[M]`) stay named -- single-character blanks are the
+  document's own vocabulary, and all-caps acronyms stay named because a
+  writer chose them;
+- lowercase words stay named, including multi-word and hyphenated ones --
+  the class the earlier phrase-structure rule died on (`[time-to-market]`);
+- only the capitalized-word shape is taken, which is exactly the shape the
+  rename gave the slot (`[Z]` -> `[Method]`); no phrase-structure inference
+  returns.
+
+The trade-off is recorded, not resolved: a filled quantity written in
+capitalized-word form (`[Uptime]`) will read as scaffolding. The rubric's own
+blank style is single letters and lowercase metric names, so the rule errs
+toward catching the escape class that hid `[Method]`.
+
+Provenance traced while tracing the miss, and worth keeping: the committed
+outputs carry `[Method]` even though neither `evals/layer3_tasks.json` nor the
+document's brackets contain it. The document teaches "accomplishment, then
+measurement, then method" and keeps `[N]`/`[M]` as its only blank vocabulary;
+the model volunteers the third leg as `[Method]` in that same register when
+the method is missing. The rename never lived in a file -- it is the model
+completing the schema the document describes.
+
+Regression coverage: the renamed slot, the doubled ask-the-user note, four
+further label shapes, and the four named-protection classes
+(`[method]`, `[QA]`, `[Continue for each bullet...]`, `[99.9%]`).
+Because the trigger participates in `scoring_fingerprint`, the committed
+reports are stale against the new policy, and regeneration is the next step
+before any figure in `docs/layer3-judging.md` may be updated.
+
+## Outcome of the adopted mechanism (2026-10-21, after regeneration)
+
+Trigger 4 was added and **both live reports were regenerated** against the
+OpenAI-compatible endpoint (~200 live calls). The renamed slot now measures:
+
+- `rbw-train-01` echoes `[Method]` in all three seeds; the worst case classifies
+  **2 scaffolded** slots (seed 1) and the fabrication veto pins the task to 0.0
+  in every seed.
+- `rbw-held-01` echoes it in seed 0 (1 scaffolded); the other two `rbw` tasks
+  carry none. Two of four `rbw` tasks carry the defect.
+
+The criterion's verdict is still **unmet** — the slot is real, and closing it
+needs the document to stop teaching a third leg ("accomplishment, then
+measurement, then method"), not another classifier trigger.
+
+Headline figures moved from the first post-edit measure (3.56 mean / 4.74
+unvetoed / gap 2.92 / swing 0.29) to the regenerated state (4.12 / 5.49 /
+2.36 / 0.0). The swing floor is zero — the provider came back deterministic at
+temperature 0.0 — so `ordering_supported` is vacuously True and
+`gap_over_swing` is `None`; the ratio is a division by zero and is quoted as
+undefined. The 3.56 → 4.12 movement between the two measures is not
+attributable: both are fresh samples from a deterministic endpoint whose
+earlier instability did not reproduce, so it records measurement noise.
+
+Fabrication measured the same **2 of 30 (6.7%)** independent of the classifier
+change: `rbw-train-01` seeds 0 and 2. The regression coverage above is what
+made the diagnostic possible; without trigger 4 the regeneration would have
+repeated the blind zero and no "unmet" could have been distinguished from
+"unmeasured".

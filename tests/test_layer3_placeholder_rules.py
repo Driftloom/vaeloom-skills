@@ -128,6 +128,76 @@ def test_bracket_used_as_a_noun_is_named():
     assert r["named"] == 1, r
 
 
+# --- trigger 4: schema label (ADR-001) ---------------------------------------
+
+def test_the_renamed_slot_that_escaped_is_scaffolding():
+    """The exact Phase 2 escape, pinned with its real shape.
+
+    [Z] was renamed [Method], [N] and [M] stayed single letters, and the
+    classifier scored all three named -- so `scaffolded == 0` was reported on
+    a run whose outputs carried the rule-3 slot it exists to detect. With the
+    [Method] counted, the two tasks that carried [Z] in Phase 1 scaffold
+    visibly instead of hiding inside the formula-variable bucket.
+    """
+    r = classify("improving [N] by [M] through [Method]")
+    assert r["total"] == 3, r
+    assert r["scaffolded"] == 1, r
+    assert r["named"] == 2, r
+
+
+def test_the_ask_the_user_note_counts_both_method_slots():
+    """The rbw outputs carry [Method] twice -- once in the bullet, once in the
+    ask-the-user parenthetical. Both must count, or a generation that only
+    trades on the parenthetical still fails the agency cap."""
+    output = (
+        "Owned the internal analytics dashboard for the sales team, improving "
+        '[N] by [M] through [Method].\n\nNOTE: I have no metrics for this '
+        'role. Fill in [N] and [M] (e.g., "data accuracy by 20%" or "load '
+        'time by 2s") and the [Method] (e.g., "optimizing SQL queries").'
+    )
+    r = classify(output)
+    assert r["total"] == 6, r
+    assert r["scaffolded"] == 2, r
+    assert r["named"] == 4, r
+
+
+@pytest.mark.parametrize("fragment", [
+    "reduced defects, fixed by [Action]",
+    "the handoff owned by [Role]",
+    "proof from [Skill]",
+    "[Metric]",
+])
+def test_schema_label_is_scaffolding(fragment):
+    """One capitalized word of two or more letters is the shape of a schema
+    label -- [Z] renamed [Method], the same slot under a different name."""
+    r = classify(fragment)
+    assert r["total"] == 1, fragment
+    assert r["scaffolded"] == 1, fragment
+    assert r["named"] == 0, fragment
+
+
+@pytest.mark.parametrize("fragment", [
+    "[method]",
+    "[QA]",
+    "[Continue for each bullet...]",
+    "[99.9%]",
+])
+def test_filled_or_multi_word_or_acronym_form_is_named(fragment):
+    """The named bucket must survive the fourth trigger.
+
+    Lowercase words stay named -- that class is the filled quantity the
+    earlier misfiring rule died on ([time-to-market]); all-caps is the shape
+    of an acronym a writer chose, not a template label; the document's own
+    multi-word bracket is an instruction to the writer only because of
+    trigger 3, and this fragment carries none; and a numeric blank is a
+    quantity, the rubric's preferred unknowable.
+    """
+    r = classify(f"improving {fragment} for the division")
+    assert r["total"] == 1, fragment
+    assert r["scaffolded"] == 0, fragment
+    assert r["named"] == 1, fragment
+
+
 # --- named placeholders ------------------------------------------------------
 
 @pytest.mark.parametrize("fragment,expected_total", [

@@ -77,8 +77,8 @@ PASSIVE_MARKERS = (
 PLACEHOLDER_RE = re.compile(r"\[[^\]]*\]|\{[^}]*\}|<[^>]*>")
 
 # A placeholder is "scaffolding" when it occupies a structural slot rather than
-# naming a quantity. These are the three triggers from spec section 3.1 and the
-# complete list -- a fourth would change behaviour that no decision covers.
+# naming a quantity. Three triggers from spec section 3.1 and one from ADR-001;
+# a fifth would change behaviour that no decision covers.
 _FORMULA_VARIABLE_RE = re.compile(r"^[XYZxyz]$")
 _MEASURED_BY_RE = re.compile(r"\bas\s+measured\s+by\s*$", re.IGNORECASE)
 _INSTRUCTION_VERBS = {
@@ -88,6 +88,17 @@ _INSTRUCTION_VERBS = {
 # Not a verb, but a bracket opening with "your" addresses the writer rather than
 # naming a quantity, so it is scaffolding on the same footing as one.
 _WRITER_MARKER = "your"
+# A schema label: one capitalized word of two or more letters. [Z] was renamed
+# [Method], which no other trigger sees -- the word is not a formula variable,
+# no "as measured by" precedes it, and its head is not an instruction verb -- so
+# ADR-001 added this trigger to keep the renamed slot from escaping the agency
+# cap. The shape is deliberately narrow: a lowercase word ([time-to-market],
+# the filled quantity the previous shape rule died on), multi-word contents
+# ([Continue for each bullet...]), an all-caps acronym ([QA]), and a single
+# letter ([N]) each stay named. This infers from one character class and
+# nothing else, unlike the rules removed in earlier rounds, which guessed at
+# phrase structure.
+_STRUCTURAL_SLOT_RE = re.compile(r"^[A-Z][a-z]+$")
 # Punctuation a bracket may put at either end of its first word: "[Insert: the
 # metric]", "[describe the outcome (optional)]", "[**write** the summary]".
 # Stripped from both ends so the word is still recognisable. This normalises one
@@ -103,7 +114,7 @@ def classify_placeholders(text: str) -> dict:
     slot? It does not judge whether the named quantity is a good thing to
     measure or whether the surrounding prose is good. Those remain the judge's.
 
-    Three triggers, any one sufficient, and named is the default when none
+    Four triggers, any one sufficient, and named is the default when none
     fires:
 
       1. the contents are a formula variable -- [X], [Y], [Z];
@@ -111,12 +122,19 @@ def classify_placeholders(text: str) -> dict:
       3. the first word of the contents is an instruction verb, or is "your",
          which makes the bracket a note to the writer rather than a quantity.
          Punctuation around that word is stripped first, so "[Insert: the
-         metric]" is recognised as the same instruction as "[insert]".
+         metric]" is recognised as the same instruction as "[insert]";
+      4. the contents are a schema label -- one capitalized word of two or
+         more letters, the shape [Z] took when it was renamed [Method]. This
+         trigger is shape-only by design: a lowercase word, multi-word
+         contents, an all-caps acronym, and a single letter all stay named,
+         because that class is the filled quantity the rubric prefers.
 
-    The default is the half that matters. Scaffolding needs positive evidence of
-    an instruction, so a quantity the output names for itself -- "[end-to-end
-    cycle time]", "[time-to-market]" -- stays named. A rule that inferred a
-    noun from the shape of the characters classified those as scaffolding.
+    The default is the half that matters. Scaffolding needs positive evidence
+    of an instruction or a template label, so a quantity the output names for
+    itself -- "[end-to-end cycle time]", "[time-to-market]" -- stays named. A
+    rule that guessed at phrase structure from the characters classified those
+    as scaffolding; trigger 4 borrows only the capitalized-word shape, not the
+    phrase-structure inference.
 
     Only trigger 2 reads surrounding text, and it reads only what immediately
     precedes the placeholder -- never what follows it, and never at a distance.
@@ -126,6 +144,9 @@ def classify_placeholders(text: str) -> dict:
         total += 1
         inner = match.group(0)[1:-1].strip()
         if _FORMULA_VARIABLE_RE.match(inner):
+            scaffolded += 1
+            continue
+        if _STRUCTURAL_SLOT_RE.match(inner):
             scaffolded += 1
             continue
         before = text[: match.start()].rstrip()
