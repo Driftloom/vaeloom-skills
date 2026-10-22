@@ -5,8 +5,9 @@ say whether a skill document, followed by a competent model, produces a good
 resume bullet.** This layer can, and is the prerequisite for SkillOpt, which
 optimises against exactly this kind of signal.
 
-> **Status: measured live against `gemma4:31b` via `ollama.com/v1`.**
-> Overall **5.01/10** at 3 seeds across 2 skills — **5.61/10 with the 2
+> **Status: measured live against `gemma4:31b` via the provider's OpenAI-compatible
+> endpoint.**
+> Overall **5.30/10** at 3 seeds across 2 skills — **5.98/10 with the 2
 > fabricating generations excluded**, because the plain mean misattributes
 > their damage to prose quality. **6.7% of generations fabricate** (2 of 30).
 > The anchors are written, not calibrated against human raters, so this is a
@@ -14,11 +15,14 @@ optimises against exactly this kind of signal.
 > number does and does not support.
 >
 > **These figures are from the Phase 2 branch run ("The Phase 2 run and what it
-> actually proved", below).** They describe the `resume-bullet-writer` document
+> actually proved", below), regenerated after ADR-001 added trigger 4 to the
+> placeholder classifier.** They describe the `resume-bullet-writer` document
 > *after* its template-removal edit, and that edit is not validated: the
-> scaffolding metric is blind to noun-headed slots (ADR-001), and fabrication
-> rose from 0 of 30 to 2 of 30. The branch stopped at its own gate. Nothing in
-> this header is a claim that the document change succeeded.
+> renamed third slot now measures — `[Method]` appears in 2 of 4 `rbw` tasks
+> (worst case 2 scaffolded slots on `rbw-train-01`) — and fabrication rose
+> from 0 of 30 to 2 of 30, vetoing the same task in every seed. The branch
+> stopped at its own gate. Nothing in this header is a claim that the document
+> change succeeded.
 >
 > **Regenerated under the placeholder caps (see "One stated placeholder
 > policy").** A second model family agrees on **76%** of judgements. On fresh
@@ -125,6 +129,11 @@ python evals/layer3_variance.py layer3-live-s3.json --compare layer3-live-report
 | `resume-quantifier` | 6.47 | 6.47 | 0.00 |
 | **Overall** | **6.14** | **6.30** | **+0.16** |
 
+*The table above records the Phase 1 re-run, a superseded measurement: both
+live reports have since been regenerated twice, and the current reports agree
+exactly (1-seed and 3-seed both read 4.1175 for `resume-bullet-writer`, see
+"`--seeds` at temperature 0.0" below).*
+
 These two runs no longer agree exactly: the 1-seed report gives
 `resume-bullet-writer` **5.81** where the 3-seed report gives **6.13**. The
 earlier revision of this table read 6.11 against 6.11 with a 0.00 shift and
@@ -132,7 +141,7 @@ called that agreement a working reproducibility check. Re-running the same
 commands did not reproduce it — see "The determinism claim in this document no
 longer holds as written" below, which records the same finding from the other
 direction. `--seeds` is not a variance estimate at this temperature, so the
-spread between these two runs is generator instability, not sampling error.
+spread between these two runs was generator instability, not sampling error.
 
 The task set grew from 8 to 10 once the fix landed — see the section on the sourced-number
 tasks below, which exist because a 0% fabrication rate is also what a broken skill
@@ -140,38 +149,56 @@ would report.
 
 - **On the Phase 1 re-run, ordering was not supported.** The gap was 0.34 against
   a seed-to-seed swing of 0.66 — a ratio of 0.5×, so the gap was inside the
-  noise. On the Phase 2 run the gap is **2.92** against a swing of **0.29** (ratio
-  **10.0×**), so ordering is supported there — but that run sits after the
-  `resume-bullet-writer` document edit, so the gap partly measures the edit, not
-  the skills. See "The Phase 2 run and what it actually proved".
+  noise. On the regenerated Phase 2 reports the gap is **2.36** against a swing
+  of **0.0** and a ratio that is undefined (division by zero): when the seeds
+  stop moving, the ordering flag flips True vacuously, which is not a ranking
+  signal. The first Phase 2 measure (2.92 against 0.29, ratio 10.0×) sat after
+  the `resume-bullet-writer` document edit, so that gap partly measured the
+  edit. See "The Phase 2 run and what it actually proved".
 - **The judge was not self-consistent on the Phase 1 re-run.** 1 of 30
   criterion-task pairs returned the full `0`–`10` range (`rbw-train-01` `agency`,
   samples `[5.81, 6.47, 6.11]` at the skill level and `[0, 10, 0]` on the
   criterion), against 0 of 30 on the previous run and 2 of 24 before the skill
-  documents changed. On the Phase 2 run the full-range rate is **0.0%**. Note
-  this is *self*-consistency; the cross-model comparison below is the harder test.
+  documents changed. On the regenerated reports the full-range rate is
+  **0.0%** (0 of 30). Note this is *self*-consistency; the cross-model
+  comparison below is the harder test.
 - **Fabrication was 0.0% per generation on the Phase 1 re-run** (0 of 30), down
-  from 25.0% (6 of 24). On the Phase 2 run it is **6.7%** (2 of 30) — the
-  document edit moved fabrication, see the Phase 2 section.
+  from 25.0% (6 of 24). On the regenerated reports it is **6.7%** (2 of 30) —
+  the document edit moved fabrication, see the Phase 2 section.
 
 ### `--seeds` at temperature 0.0 is a reproducibility check, not a variance sample
 
-The live judge is called at `temperature: 0.0`. An earlier revision of this
-document asserted that this makes the run exactly repeatable, quoting per-seed
-skill means of `[6.11, 6.11, 6.11]` and `[6.47, 6.47, 6.47]` with no criterion
-moving at all. **That assertion did not survive re-measurement.** The
-regenerated 3-seed report gives `[5.81, 6.47, 6.11]` for `resume-bullet-writer`
-— 4 of 40 criteria vary across seeds — against `[6.47, 6.47, 6.47]` for
-`resume-quantifier`, which is still flat. The provider is not byte-stable at
-temperature 0.0 even with a fixed seed, so `--seeds` does not confirm
-repeatability here; it partly measures the provider's own nondeterminism.
+The live judge is called at `temperature: 0.0`, and what `--seeds` measures has
+flip-flopped with the provider across revisions. All three states are on
+record so the next revision cannot misread either direction:
+
+1. **First revision (flat).** Per-seed skill means `[6.11, 6.11, 6.11]` and
+   `[6.47, 6.47, 6.47]` with no criterion moving at all, and that was reported
+   as an exactly repeatable run.
+2. **Second revision (variability).** The same commands re-run during the
+   Phase 2 regeneration produced `[5.81, 6.47, 6.11]` for
+   `resume-bullet-writer` — 4 of 40 criteria varying across seeds — against
+   `[6.47, 6.47, 6.47]` for `resume-quantifier`, and an earlier revision of
+   this document correctly retracted the exact-repeatability claim then.
+3. **Current reports (flat again).** After ADR-001 added trigger 4 and both
+   live reports were regenerated, every per-seed mean is identical —
+   `[4.1175, 4.1175, 4.1175]` for `resume-bullet-writer` and
+   `[6.4733, 6.4733, 6.4733]` for `resume-quantifier` — and the 1-seed mean
+   equals the 3-seed mean to four decimals. Two criterion-task pairs are
+   flagged unstable (`rbw-held-01` `agency`, `rq-sourced-01` `craft`), but
+   none of that moves a score.
+
+The provider's behaviour at temperature 0.0 is therefore not a property of the
+rubric or the prompt; the same endpoint produced three different stability
+profiles across revisions, so determinism is observed per run, not assumed.
 `--judge-temperature > 0` exists so that the judge's distribution can be sampled
 when it is wanted, and `test_judge_temperature_is_carried_into_the_request`
 pins that the flag reaches the request rather than being a constant.
 
-The between-skill gap is now **0.34** with a seed swing of 0.66. The ordering
-reversed when the `agency` anchors tightened, and it is no longer supported at
-all — which is why no ordering is asserted anywhere in this project.
+The between-skill gap is now **2.36** with a seed swing of **0.0**. Ordering
+support flips to `True` mechanically whenever the swing floor collapses, so it
+carries no ranking information under this endpoint — which is why no ordering
+is asserted anywhere in this project.
 
 An earlier revision of this document claimed a single seed understated fabrication
 (`7.35` against `5.64`). That was a genuine observation, but it was an artefact of
@@ -293,53 +320,64 @@ restoring the old operating rule fails the suite.
 
 Phase 2 removed the literal `'Accomplished [X] as measured by [Y] by doing [Z]'`
 template from `resume-bullet-writer` — candidates had been copying it verbatim —
-and rewrote the placeholder guidance. Both criteria were then measured by
-regenerating both reports (~200 live calls). **One criterion is unproven, one
-regressed, and the work stopped at its own stop gate.**
+and rewrote the placeholder guidance. The criteria have now been measured
+three times: the Phase 1 baseline, a first post-edit measure under a classifier
+blind to noun-headed slots (ADR-001), and a regeneration after trigger 4 was
+added (both live reports regenerated, ~200 live calls). After the
+regeneration, **one criterion is measured but unmet, one regressed on both
+measures, and the stop gate still holds.**
 
-| | Phase 1 (pre-edit) | Phase 2 (post-edit) |
-|---|---|---|
-| 1-seed mean, `resume-bullet-writer` | 5.81 | **3.46** |
-| 3-seed mean, `resume-bullet-writer` | 6.13 | **3.56** |
-| per-seed means, `resume-bullet-writer` | `[5.81, 6.47, 6.11]` | **`[3.46, 3.46, 3.75]`** |
-| unvetoed mean, `resume-bullet-writer` | 6.25 | **4.74** |
-| between-skill gap / swing / ratio | 0.34 / 0.66 / 0.5× | **2.92 / 0.29 / 10.0×** |
-| fabrication per generation | 0 of 30 (0.0%) | **2 of 30 (6.7%)** |
-| fabrication, task level | 0 of 10 | **10.0%** |
+| | Phase 1 (pre-edit) | Phase 2, first measure (blind classifier) | Phase 2, regenerated under trigger 4 |
+|---|---|---|---|
+| 1-seed mean, `resume-bullet-writer` | 5.81 | 3.46 | **4.12** |
+| 3-seed mean, `resume-bullet-writer` | 6.13 | 3.56 | **4.12** |
+| per-seed means, `resume-bullet-writer` | `[5.81, 6.47, 6.11]` | `[3.46, 3.46, 3.75]` | **`[4.12, 4.12, 4.12]`** |
+| unvetoed mean, `resume-bullet-writer` | 6.25 | 4.74 | **5.49** |
+| between-skill gap / swing / ratio | 0.34 / 0.66 / 0.5× | 2.92 / 0.29 / 10.0× | **2.36 / 0.0 / — (undefined)** |
+| fabrication per generation | 0 of 30 (0.0%) | 2 of 30 (6.7%) | **2 of 30 (6.7%)** |
+| fabrication, task level | 0 of 10 | 10.0% | **10.0%** |
 
 Reading the table honestly:
 
-- **Criterion 2 (scaffolding eliminated) is unproven, not met.** The classifier
-  reports `scaffolded == 0` across every `rbw-*` candidate, but ADR-001 shows the
-  metric cannot see a noun-headed slot: `[Method]` — the third structural slot
-  renamed — appears in `rbw-train-01` and `rbw-held-01`, the exact two tasks that
-  carried `[Z]` in Phase 1. The zero is an artefact of a blind measurement, so
-  this column records it rather than claims it: the template-copying defect is
-  *unverified*, and `scaffolded == 0` from this harness carries no information
-  until the classifier is fixed.
-- **Criterion 3 (fabrication stays 0.0%) regressed.** The fabricating generations
-  volunteer example figures inside the parenthetical they use to ask the user for
-  numbers — *"Fill in [N] and [M] (e.g., \"data accuracy by 20%\")"*. Removing the
-  template moved fabrication out of the bullet and into the ask. Earlier this
-  ledger attributed the rise to a document instruction to supply examples; the
-  document contains no such instruction, and that claim is retracted — the
-  cause is imitation of the exemplars' density, not a rule the document states.
-- **The overall judged quality fell hard.** The 3-seed mean dropped 6.13 → 3.56
-  and the unvetoed mean 6.25 → 4.74. One task was vetoed and pinned to 0.0
-  (task-level rate 10.0%), which drags the headline, but the unvetoed figure
-  falls on its own. Whatever the document edit did, by the rubric's own measure
-  it made the skill worse, not better.
-- **The ordering flipped to "supported" for a reason that is not skill quality.**
-  The gap is now 2.92 against a swing of 0.29 (ratio 10.0×), so this run says
-  `resume-quantifier` outranks `resume-bullet-writer` — but the two documents are
-  no longer on the same footing: the `rbw` doc was edited between the baseline
-  and this run, so the gap partly measures the edit. No ranking is asserted from
-  it.
+- **Criterion 2 (scaffolding eliminated) is now measured — and still unmet.**
+  Trigger 4 catches the renamed slot in the fresh outputs: `rbw-train-01`
+  echoes `[Method]` in all three seeds (worst case **2 scaffolded** of the
+  task's slots, on seed 1) and `rbw-held-01` echoes it in seed 0 (1); the
+  other two `rbw` tasks carry none. The slot comes from the document's own
+  prose — "accomplishment, then measurement, then method" — so the
+  template-copying defect moved into a rename the model completes itself. The
+  defect is real and now on the record; fixing it needs the document to stop
+  teaching a third slot, not another classifier trigger.
+- **Criterion 3 (fabrication stays 0.0%) regressed on both measures.** The
+  fabricating generations volunteer example figures inside the parenthetical
+  they use to ask the user for numbers — *"Fill in [N] and [M] (e.g., \"data
+  accuracy by 20%\")"*. Removing the template moved fabrication out of the
+  bullet and into the ask. The fresh run locates them exactly: `rbw-train-01`
+  seeds 0 and 2, so the fabrication veto pins the task to 0.0 in all three
+  seeds — the plain mean reads 4.12 where the unvetoed mean reads 5.49.
+  Earlier this ledger attributed the rise to a document instruction to supply
+  examples; the document contains no such instruction, and that claim is
+  retracted — the cause is imitation of the exemplars' density, not a rule the
+  document states.
+- **The overall judged quality fell hard on both measures.** From Phase 1's
+  6.13 to **4.12** (unvetoed: 6.25 to **5.49**). One task is vetoed in
+  every seed (task-level rate 10.0%), which drags the plain mean, but the
+  unvetoed figure also falls on its own. Whatever the document edit did, by
+  the rubric's own measure it made the skill worse.
+- **The 3.56 → 4.12 difference between the two post-edit measures is not
+  attributable.** Both are fresh samples from a deterministic endpoint whose
+  earlier instability did not reproduce (see "`--seeds` at temperature 0.0"),
+  so that swing records measurement noise, not a change in the document.
+- **The ordering is no signal.** The gap is 2.36 against a swing of 0.0 — a
+  zero denominator makes the ratio undefined and flips `ordering_supported`
+  True vacuously. (The first measure's 2.92 against a real 0.29 swing still
+  measured the edit, not the skills.) No ranking is asserted from these
+  reports.
 
 The evidence lives in `layer3-live-s3.json` and `layer3-live-report.json`
-(committed in `d64c4f4`). Per ADR-001, no `scaffolded` figure from this harness
-may be cited as evidence that a document change succeeded until the classifier
-catches noun-headed slots.
+(committed after the regeneration). Per ADR-001 as amended, `scaffolded`
+figures from this harness may now be cited; the criterion's own verdict is
+unmet, and the 2-of-4 task coverage is the honest reading of it.
 
 ## How much of this survives a different judge?
 
@@ -446,7 +484,7 @@ round of anchor editing.
 
 `classify_placeholders` (`evals/layer3_judge.py`) reads each `[...]` span and
 asks one question: **does this placeholder occupy a structural slot, or is it
-holding a value?** Three triggers make it `scaffolded`, any one is sufficient,
+holding a value?** Four triggers make it `scaffolded`, any one is sufficient,
 and **`named` is the default when none fires**:
 
 | # | Trigger | Example |
@@ -454,13 +492,17 @@ and **`named` is the default when none fires**:
 | 1 | The contents are a formula variable — `^[XYZxyz]$` | `[X]`, `[Y]`, `[y]` |
 | 2 | The phrase `as measured by` immediately precedes it, ignoring case | `improving throughput as measured by [the metric]` |
 | 3 | The first word is an instruction verb (`insert`, `add`, `describe`, `specify`, `list`, `name`, `fill`, `enter`, `replace`, `provide`, `detail`, `quantify`, `write`, `state`) or is `your`. Punctuation is stripped from both ends of the word first, so `[Insert: the metric]` is recognised. | `[insert specific action]`, `[your e.g. example here]` |
+| 4 | The contents are a schema label — one capitalized word of two or more letters, `^[A-Z][a-z]+$` | `[Method]`, `[Action]` — added by ADR-001 |
 
 **`named` is the half that does the work.** Scaffolding needs positive evidence
-of a structural slot. A rule that inferred a noun from the *shape* of the
-characters classified `[end-to-end cycle time]`, `[Q3 pipeline value]` and
-`[time-to-market]` as scaffolding — misreading a real quantity as a blank —
-and absence of evidence of a structural slot means the placeholder is holding a
-value, which is the common case.
+of a structural slot. A rule that inferred a noun from the bare presence of
+*capitalization* would classify `[Q3 pipeline value]` or
+`[time-to-market]` as scaffolding — misreading a real quantity as a blank.
+Trigger 4 borrows only the capitalized-word shape, and deliberately narrower:
+a multi-word quantity, a hyphenated compound, a lowercase noun, an all-caps
+acronym, a single letter, and something numeric all stay named, and absence of
+evidence of a structural slot means the placeholder is holding a value, which
+is the common case.
 
 Only trigger 2 reads surrounding text, and it reads only what **immediately
 precedes** the placeholder — never what follows it, and never at a distance.
@@ -480,6 +522,10 @@ Worked examples, each verified against the implementation rather than asserted:
 | `improving [X] as measured by [Y] by [Z]` | 3 scaffolded | `[X]`/`[Y]`/`[Z]` are formula variables; `as measured by` also fires |
 | `reduced [X]%` | 1 scaffolded | `[X]` is a formula variable — the `%` is irrelevant |
 | `reduced spend by 15-20% through [insert specific action]` | 1 scaffolded | writer instruction |
+| `improving [N] by [M] through [Method]` | 3 scaffolded | `[Method]` fires trigger 4 — ADR-001; the letters stay named |
+| `... using [method]` | 1 named | lowercase word — not a schema label |
+| `[QA]` | 1 named | all-caps acronym — not a schema label |
+| `[Uptime]` | 1 scaffolded | the honest trade-off: a *filled* capitalized word reads as a blank — recorded in ADR-001 |
 | `Led the migration of the legacy warehouse` | 0 placeholders | — |
 
 Two rows here are the ones most likely to be read the other way, and both
@@ -520,28 +566,31 @@ number for a capped report.
 
 ### What the caps actually did
 
-**The fabrication rate is the load-bearing number and it held: 0/30 = 0.0%**
-(0 of 10 tasks). The caps **cannot move it either way** — the veto reads the
-candidate with placeholders stripped out, so whether a digit was invented is
-settled before any cap runs. The caps also did not push the model into
-avoiding placeholders rather than filling them honestly: the transcripts still
-show the same placeholder-plus-request behaviour, and both sourced-number tasks
-still score 10.0. Had this gone the other way it would have been the one outcome
-in this plan that must not be committed.
+The fabrication rate cannot move under the caps — the veto reads the candidate
+with placeholders stripped out before any cap runs, so placeholder policy is
+inert with respect to whether a digit was invented. That structural claim held
+on the first caps-era regeneration, which measured 0/30; on the fresh
+regeneration the generator itself regressed to **2 of 30 (6.7%)** — not through
+the caps but around them. ADR-001's reminder stands inside that regression too:
+a rate that *stays* at any number proves one thing, and 0% is also what a
+broken skill would report.
 
-Recomputing `layer3-live-s3.json` with the caps removed is exactly
-like-for-like — same tasks, same judge scores, one variable — and it is not the
-same as re-running the generator, which is not byte-stable (see "The
-determinism claim in this document no longer holds as written"). On that
-recomputation the caps **barely bit**. Of 40 criterion entries, **exactly one**
-changed value: `rbw-held-01` `agency`, 6.67 → 5.0. Every score below is for
+Recomputing `layer3-live-s3.json` with the caps removed is exactly like-for-like
+— same tasks, same judge scores, one variable — and it is not the same as
+re-running the generator, which did not reproduce earlier revisions (see
+"`--seeds` at temperature 0.0"). On that recomputation the caps **barely bit**.
+Of 40 criterion entries, **exactly one** changed value: `rbw-held-01` `agency`,
+6.67 → 5.0 — the scaffolded slot that trigger 4 now surfaces in the seed-0
+generation of that task. Every score below is for
 `resume-bullet-writer`, which carried placeholders in all four of its tasks;
-`resume-quantifier` generated none in any of its ten, so no cap could reach it.
+`resume-quantifier` generated none across its six tasks (18 generations), so
+no cap could reach it.
 
 | composite | before caps | after caps | change |
 |---|---|---|---|
-| capped aggregate | 6.38 | **6.25** | −0.13 |
-| per-seed counterfactual | 6.37 | **6.13** | −0.24 |
+| capped aggregate | 4.24 | **4.12** | −0.12 |
+| per-seed counterfactual, uncapped mean | **4.24** | 4.12 | −0.12 |
+| per-seed means, uncapped | `[4.49, 4.12, 4.12]` | `[4.12, 4.12, 4.12]` | only the seed-0 bump moves — the same agency entry |
 | `resume-quantifier`, either composite | 6.47 | **6.47** | 0.00 |
 
 Both "before" figures are **counterfactuals recomputed from
@@ -549,10 +598,13 @@ Both "before" figures are **counterfactuals recomputed from
 reports were regenerated under the caps, which is the whole point. Each is
 reproducible by hand from that one file:
 
-- **6.38** — the mean of the four `resume-bullet-writer` task scores with
-  `mean_capped` read as `mean` instead.
-- **6.37** — the mean of the three per-seed skill means with
-  `apply_placeholder_cap` removed from each criterion sample.
+- **4.24** — the mean of the four `resume-bullet-writer` task scores with
+  `mean_capped` read as `mean` instead (i.e., only `rbw-held-01` `agency`
+  keeps its 6.67 rather than being clamped to 5.0).
+- **`[4.49, 4.12, 4.12]` (mean 4.24)** — per-seed task totals recomputed from
+  the stored criterion samples with the cap removed per sample; only seed 0
+  moves, because the only scaffolded slot it carries sits in that
+  generation's classification.
 
 There is no committed pre-cap report to read them from, and none should be
 invented: hand-stamping one would assert a provenance it does not have.

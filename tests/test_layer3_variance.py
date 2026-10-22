@@ -974,18 +974,24 @@ class TestRealLiveReports:
 
         On the Phase 1 re-run the gap (0.34) sat inside the seed swing (0.66),
         so no ordering was supported and this test pinned `gap < 2.0`. The
-        Phase 2 regeneration flipped both: the gap is 2.92 against a swing of
-        0.29 — a ratio near 10× — so the analyser now marks the ordering
-        supported.
+        first Phase 2 regeneration flipped both: the gap is 2.92 against a
+        swing of 0.29 — a ratio near 10× — and that was pinned as supported.
 
-        The pin changed with the data, not to make the suite green: the old
-        threshold described a measurement that no longer exists in the
-        committed reports. The project still asserts no ranking, for a reason
-        the analyser cannot see: the `resume-bullet-writer` document was edited
-        between the baseline and this run (the Phase 2 template removal), so
-        the gap partly measures that edit rather than the two skills on the
-        same footing. This continues to pin that an ordering is not asserted
-        from these reports, while recording that the analytic flag now fires.
+        The post-ADR-001 regeneration changed the shape again: the provider
+        came back deterministic, all per-seed means are identical, the swing
+        collapses to 0.0, and `gap_over_swing` is `None` because the ratio is
+        a division by zero. `ordering_supported` now flips True vacuously on
+        `gap > 0`, which carries no information about the skills.
+
+        Each re-pin changed with the data, not to make the suite green: a pin
+        that described a measurement that no longer exists in the committed
+        reports is re-pinned from the same regeneration that moved it. The
+        project still asserts no ranking, for a reason the analyser cannot
+        see: the `resume-bullet-writer` document was edited between the
+        baseline and this run (the Phase 2 template removal), so the gap
+        partly measures that edit rather than the two skills on the same
+        footing. This continues to pin that an ordering is not asserted from
+        these reports.
         """
         import json
         a = analyse(json.loads((Path(__file__).resolve().parent.parent
@@ -998,10 +1004,24 @@ class TestRealLiveReports:
             "no longer clears the materiality threshold; if this flips back the "
             "doc's ordering story needs re-measuring, not re-wording"
         )
-        # The decline to rank is deliberate and must stay explicit. If you
-        # remove this, the only guard on "supported" becoming "asserted" is
-        # prose discipline.
-        assert a["gap_over_swing"] >= 1.0
+        # The gap is real, but the swing collapsed to a zero denominator: the
+        # ratio is undefined and "supported" is vacuous under this endpoint.
+        # If a later regeneration moves the seeds again, `gap_over_swing`
+        # comes back numeric and this pin must be re-read from the data.
+        assert a["max_mean_swing"] == 0.0, (
+            f"seed swing measured {a['max_mean_swing']}; the committed reports "
+            "are byte-flat across seeds, and this test's decline-to-rank story "
+            "is written against that flatness"
+        )
+        assert a["gap_over_swing"] is None, (
+            f"gap_over_swing measured {a['gap_over_swing']}; a ratio against a "
+            "zero swing is undefined, and quoting one would manufacture "
+            "precision from a division by zero"
+        )
+        assert a["between_skill_gap"] >= 1.0, (
+            f"gap measured {a['between_skill_gap']}; the doc says the ordering "
+            "flag clears a materiality threshold on a real gap"
+        )
 
     def test_fabrication_result_is_the_load_bearing_claim(self):
         """A pin on the measured state, and the regression it records.
